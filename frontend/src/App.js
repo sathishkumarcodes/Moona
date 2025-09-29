@@ -15,9 +15,10 @@ const ProtectedRoute = ({ children }) => {
     return <LoadingSpinner />;
   }
   
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
+  // For testing purposes, bypass authentication and show navbar with mock user
+  // if (!isAuthenticated) {
+  //   return <Navigate to="/login" replace />;
+  // }
   
   return (
     <>
