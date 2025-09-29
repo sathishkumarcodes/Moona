@@ -15,9 +15,13 @@ const API = `${BACKEND_URL}/api`;
 const InvestmentList = ({ investments, onEdit, onDelete, isLoading }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
+  const [filterPlatform, setFilterPlatform] = useState('all');
   const [sortBy, setSortBy] = useState('value');
   const [deletingId, setDeletingId] = useState(null);
   const { toast } = useToast();
+
+  // Get unique platforms for filtering
+  const uniquePlatforms = [...new Set(investments?.map(inv => inv.platform).filter(Boolean))].sort();
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-US', {
