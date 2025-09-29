@@ -274,6 +274,18 @@ frontend:
           agent: "testing"
           comment: "Tab navigation (Overview, Analytics, Allocation, Holdings, vs SPY) is functional and responsive."
 
+  - task: "Google OAuth Authentication Flow"
+    implemented: true
+    working: false
+    file: "/app/frontend/src/components/AuthProvider.jsx"
+    stuck_count: 1
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: false
+          agent: "testing"
+          comment: "CRITICAL OAUTH ISSUE IDENTIFIED: Users cannot reach dashboard after Google login due to CORS policy blocking session data request. ✅ OAuth button correctly redirects to auth.emergentagent.com ✅ AuthProvider processes session_id from URL fragment ✅ URL fragment cleaning works ❌ Request to 'https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data' blocked by CORS: 'No Access-Control-Allow-Origin header present'. This prevents authentication state update, keeping users on login page. External OAuth service needs CORS configuration for frontend domain."
+
 metadata:
   created_by: "testing_agent"
   version: "1.0"
