@@ -224,9 +224,10 @@ const Dashboard = () => {
                     onClick={() => {
                       toast({
                         title: "✨ Moona Magic",
-                        description: "Portfolio updated! Watch those gains shine!",
+                        description: "Refreshing your portfolio with lunar power!",
+                        duration: 3000
                       });
-                      // Add a little sparkle effect
+                      // Add a little celebration and refresh data
                       refreshData();
                     }}
                   />
