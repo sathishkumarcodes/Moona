@@ -7,7 +7,7 @@ import { TrendingUp, Activity, LogOut, User, Settings, Sparkles } from 'lucide-r
 import { useAuth } from './AuthProvider';
 import MoonaLogo from './MoonaLogo';
 
-const Navbar = ({ refreshData, isRefreshing, exportToExcel, handleHoldingAdded }) => {
+const Navbar = () => {
   const { user, logout } = useAuth();
 
   const handleLogout = () => {
