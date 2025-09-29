@@ -210,91 +210,136 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Portfolio Summary Cards */}
+        {/* Portfolio Summary KPI Table */}
         {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            {[...Array(4)].map((_, i) => (
-              <Card key={i} className="bg-white/70 backdrop-blur-sm border-0 shadow-xl">
-                <CardContent className="p-6">
-                  <div className="animate-pulse">
-                    <div className="h-4 bg-gray-200 rounded mb-2"></div>
-                    <div className="h-8 bg-gray-200 rounded mb-2"></div>
-                    <div className="h-3 bg-gray-200 rounded"></div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          <Card className="bg-white/70 backdrop-blur-sm border-0 shadow-xl mb-8">
+            <CardContent className="p-6">
+              <div className="animate-pulse">
+                <div className="h-6 bg-gray-200 rounded mb-4"></div>
+                <div className="space-y-3">
+                  {[...Array(4)].map((_, i) => (
+                    <div key={i} className="grid grid-cols-4 gap-4">
+                      <div className="h-4 bg-gray-200 rounded"></div>
+                      <div className="h-4 bg-gray-200 rounded"></div>
+                      <div className="h-4 bg-gray-200 rounded"></div>
+                      <div className="h-4 bg-gray-200 rounded"></div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <Card className="bg-white/70 backdrop-blur-sm border-0 shadow-xl hover:shadow-2xl transition-all duration-300">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">Total Value</CardTitle>
-                <div className="p-2 bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-lg">
-                  <DollarSign className="h-4 w-4 text-white" />
+          <Card className="bg-white/70 backdrop-blur-sm border-0 shadow-xl hover:shadow-2xl transition-all duration-300 mb-8">
+            <CardHeader>
+              <CardTitle className="text-xl font-bold text-gray-900 flex items-center">
+                <BarChart3 className="w-6 h-6 mr-3 text-emerald-600" />
+                Portfolio Performance Summary
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b-2 border-gray-200">
+                      <th className="text-left py-3 px-2 font-semibold text-gray-700">Investment</th>
+                      <th className="text-right py-3 px-2 font-semibold text-gray-700">Cost Basis</th>
+                      <th className="text-right py-3 px-2 font-semibold text-gray-700">Current Value</th>
+                      <th className="text-right py-3 px-2 font-semibold text-gray-700">Gain/Loss</th>
+                      <th className="text-right py-3 px-2 font-semibold text-gray-700">Percentage Gain</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(() => {
+                      // Calculate asset type breakdowns
+                      const assetBreakdown = {};
+                      holdings?.forEach(holding => {
+                        const type = holding.type === 'roth_ira' ? 'Roth IRA' : 
+                                   holding.type === 'crypto' ? 'Crypto' : 'Stocks';
+                        
+                        if (!assetBreakdown[type]) {
+                          assetBreakdown[type] = {
+                            cost: 0,
+                            value: 0,
+                            gainLoss: 0
+                          };
+                        }
+                        
+                        assetBreakdown[type].cost += holding.total_cost || 0;
+                        assetBreakdown[type].value += holding.total_value || 0;
+                        assetBreakdown[type].gainLoss += holding.gain_loss || 0;
+                      });
+                      
+                      return Object.entries(assetBreakdown).map(([type, data]) => {
+                        const percentageGain = data.cost > 0 ? ((data.gainLoss / data.cost) * 100) : 0;
+                        
+                        return (
+                          <tr key={type} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                            <td className="py-3 px-2 font-medium text-gray-900">{type}</td>
+                            <td className="py-3 px-2 text-right font-mono text-gray-700">
+                              {formatCurrency(data.cost)}
+                            </td>
+                            <td className="py-3 px-2 text-right font-mono font-semibold text-gray-900">
+                              {formatCurrency(data.value)}
+                            </td>
+                            <td className={`py-3 px-2 text-right font-mono font-semibold ${getChangeColor(data.gainLoss)}`}>
+                              {data.gainLoss >= 0 ? '+' : ''}{formatCurrency(data.gainLoss)}
+                            </td>
+                            <td className={`py-3 px-2 text-right font-mono font-semibold ${getChangeColor(data.gainLoss)}`}>
+                              {percentageGain >= 0 ? '+' : ''}{percentageGain.toFixed(2)}%
+                            </td>
+                          </tr>
+                        );
+                      });
+                    })()}
+                    
+                    {/* Overall Total Row */}
+                    <tr className="border-t-2 border-gray-300 bg-gray-50 font-bold">
+                      <td className="py-4 px-2 text-gray-900 text-lg">Overall</td>
+                      <td className="py-4 px-2 text-right font-mono text-gray-900">
+                        {formatCurrency(portfolioSummary?.total_cost || 0)}
+                      </td>
+                      <td className="py-4 px-2 text-right font-mono text-gray-900 text-lg">
+                        {formatCurrency(portfolioSummary?.total_value || 0)}
+                      </td>
+                      <td className={`py-4 px-2 text-right font-mono text-lg ${getChangeColor(portfolioSummary?.total_gain_loss || 0)}`}>
+                        {(portfolioSummary?.total_gain_loss || 0) >= 0 ? '+' : ''}
+                        {formatCurrency(portfolioSummary?.total_gain_loss || 0)}
+                      </td>
+                      <td className={`py-4 px-2 text-right font-mono text-lg ${getChangeColor(portfolioSummary?.total_gain_loss || 0)}`}>
+                        {(portfolioSummary?.total_gain_loss_percent || 0) >= 0 ? '+' : ''}
+                        {(portfolioSummary?.total_gain_loss_percent || 0).toFixed(2)}%
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              
+              {/* Quick Stats Row */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6 pt-4 border-t border-gray-200">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-gray-900">{portfolioSummary?.asset_count || 0}</div>
+                  <div className="text-sm text-gray-600">Total Holdings</div>
                 </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
-                  {formatCurrency(portfolioSummary?.total_value || 0)}
-                </div>
-                <div className="text-sm text-gray-600 mt-2">
-                  Live market prices
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-white/70 backdrop-blur-sm border-0 shadow-xl hover:shadow-2xl transition-all duration-300">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">Total Cost</CardTitle>
-                <div className="p-2 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg">
-                  <PieChartIcon className="h-4 w-4 text-white" />
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
-                  {formatCurrency(portfolioSummary?.total_cost || 0)}
-                </div>
-                <p className="text-sm text-gray-600 mt-2">Initial investment</p>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-white/70 backdrop-blur-sm border-0 shadow-xl hover:shadow-2xl transition-all duration-300">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">Total Gain/Loss</CardTitle>
-                <div className={`p-2 rounded-lg ${(portfolioSummary?.total_gain_loss || 0) >= 0 ? 'bg-gradient-to-r from-emerald-500 to-emerald-600' : 'bg-gradient-to-r from-red-500 to-red-600'}`}>
-                  <BarChart3 className="h-4 w-4 text-white" />
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className={`text-3xl font-bold ${getChangeColor(portfolioSummary?.total_gain_loss || 0)}`}>
-                  {formatCurrency(portfolioSummary?.total_gain_loss || 0)}
-                </div>
-                <Badge variant="outline" className={`mt-2 ${getChangeBgColor(portfolioSummary?.total_gain_loss || 0)} border-0 font-semibold`}>
-                  <span className={getChangeColor(portfolioSummary?.total_gain_loss || 0)}>
+                <div className="text-center">
+                  <div className={`text-2xl font-bold ${getChangeColor(portfolioSummary?.total_gain_loss || 0)}`}>
+                    {(portfolioSummary?.total_gain_loss || 0) >= 0 ? '+' : ''}
                     {formatPercent(portfolioSummary?.total_gain_loss_percent || 0)}
-                  </span>
-                </Badge>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-white/70 backdrop-blur-sm border-0 shadow-xl hover:shadow-2xl transition-all duration-300">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">Assets</CardTitle>
-                <div className="p-2 bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg">
-                  <Activity className="h-4 w-4 text-white" />
+                  </div>
+                  <div className="text-sm text-gray-600">Total Return</div>
                 </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">{portfolioSummary?.asset_count || 0}</div>
-                <div className="text-sm text-gray-600 mt-2">
-                  {portfolioSummary?.asset_breakdown?.stocks || 0} stocks, {' '}
-                  {portfolioSummary?.asset_breakdown?.crypto || 0} crypto, {' '}
-                  {portfolioSummary?.asset_breakdown?.roth_ira || 0} roth ira
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-blue-600">
+                    {(() => {
+                      const best = holdings?.sort((a, b) => (b.gain_loss_percent || 0) - (a.gain_loss_percent || 0))[0];
+                      return best ? `+${best.gain_loss_percent.toFixed(1)}%` : '--';
+                    })()}
+                  </div>
+                  <div className="text-sm text-gray-600">Best Performer</div>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+              </div>
+            </CardContent>
+          </Card>
         )}
 
         {/* Main Content Tabs */}
