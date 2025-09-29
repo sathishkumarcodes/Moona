@@ -23,8 +23,10 @@ const AddHoldingModal = ({ onHoldingAdded }) => {
     type: '',
     shares: '',
     avg_cost: '',
-    sector: ''
+    sector: '',
+    platform: ''
   });
+  const [availablePlatforms, setAvailablePlatforms] = useState([]);
   
   const { toast } = useToast();
 
