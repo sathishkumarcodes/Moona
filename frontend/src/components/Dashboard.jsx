@@ -3,11 +3,22 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { TrendingUp, TrendingDown, DollarSign, PieChart, BarChart3, Activity } from 'lucide-react';
-import { mockPortfolio, mockInvestments, mockSPYComparison, mockPerformanceHistory } from '../mock';
+import { TrendingUp, TrendingDown, DollarSign, PieChart, BarChart3, Activity, Target, Wallet } from 'lucide-react';
+import { 
+  mockPortfolio, 
+  mockInvestments, 
+  mockSPYComparison, 
+  mockPerformanceHistory, 
+  mockAllocation, 
+  mockSectorAllocation,
+  mockMonthlyContributions 
+} from '../mock';
 import InvestmentList from './InvestmentList';
 import SPYComparison from './SPYComparison';
 import PerformanceChart from './PerformanceChart';
+import PieChart from './PieChart';
+import ContributionChart from './ContributionChart';
+import AssetBreakdownChart from './AssetBreakdownChart';
 
 const Dashboard = () => {
   const [selectedTab, setSelectedTab] = useState('overview');
