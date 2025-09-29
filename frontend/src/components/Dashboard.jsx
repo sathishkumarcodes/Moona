@@ -158,6 +158,18 @@ const Dashboard = () => {
   // Calculate derived data with safe defaults
   const allocation = holdingsService.calculateAllocation(holdings || []);
   const performanceHistory = holdingsService.generatePerformanceHistory(holdings || [], portfolioSummary || {});
+  
+  // Generate SPY comparison data
+  const spyComparison = {
+    portfolioValue: portfolioSummary?.total_value || 0,
+    portfolioInvested: portfolioSummary?.total_cost || 0,
+    portfolioReturn: portfolioSummary?.total_gain_loss_percent || 0,
+    spyValue: (portfolioSummary?.total_cost || 0) * 1.185, // Assume 18.5% SPY return
+    spyInvested: portfolioSummary?.total_cost || 0,
+    spyReturn: 18.5,
+    outperformance: (portfolioSummary?.total_gain_loss_percent || 0) - 18.5,
+    absoluteDifference: (portfolioSummary?.total_value || 0) - ((portfolioSummary?.total_cost || 0) * 1.185)
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50">
