@@ -236,18 +236,10 @@ const Dashboard = () => {
           <div className="relative bg-white/80 backdrop-blur-xl border border-white/30 rounded-2xl p-6 shadow-2xl">
             <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center space-y-4 lg:space-y-0">
               <div className="space-y-3">
-                <div className="flex items-center space-x-4">
-                  <MoonaLogo 
-                    size="lg" 
-                    showTagline={true}
-                    onClick={() => {
-                      toast({
-                        title: "Portfolio Refreshed",
-                        description: "Updated with latest market data",
-                      });
-                      refreshData();
-                    }}
-                  />
+                {/* Portfolio Header */}
+                <div>
+                  <h2 className="text-2xl font-bold text-slate-800">Portfolio Overview</h2>
+                  <p className="text-slate-600">Track your investments and performance</p>
                 </div>
                 
                 {/* Live Metrics Strip */}
