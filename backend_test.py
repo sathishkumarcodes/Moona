@@ -15,7 +15,7 @@ import os
 sys.path.append('/app/backend')
 
 # Test configuration
-BACKEND_URL = "https://portfolio-pulse-76.preview.emergentagent.com/api"
+BACKEND_URL = "https://portfolio-moon.preview.emergentagent.com/api"
 MOCK_USER_ID = "mock_user_123"
 MOCK_SESSION_TOKEN = "mock_session_token_123"
 
