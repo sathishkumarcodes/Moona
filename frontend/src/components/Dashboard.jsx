@@ -107,9 +107,9 @@ const Dashboard = () => {
     loadDashboardData();
   };
 
-  // Calculate derived data
-  const allocation = holdingsService.calculateAllocation(holdings);
-  const performanceHistory = holdingsService.generatePerformanceHistory(holdings, portfolioSummary);
+  // Calculate derived data with safe defaults
+  const allocation = holdingsService.calculateAllocation(holdings || []);
+  const performanceHistory = holdingsService.generatePerformanceHistory(holdings || [], portfolioSummary || {});
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50">
