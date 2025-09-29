@@ -76,7 +76,8 @@ const InvestmentList = ({ investments, onEdit, onDelete, isLoading }) => {
       const matchesSearch = investment.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            investment.symbol.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesType = filterType === 'all' || investment.type === filterType;
-      return matchesSearch && matchesType;
+      const matchesPlatform = filterPlatform === 'all' || investment.platform === filterPlatform;
+      return matchesSearch && matchesType && matchesPlatform;
     })
     .sort((a, b) => {
       switch (sortBy) {
