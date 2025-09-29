@@ -134,26 +134,30 @@ const Dashboard = () => {
 
           <TabsContent value="overview" className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <BarChart3 className="w-5 h-5 mr-2" />
+              <Card className="bg-white/70 backdrop-blur-sm border-0 shadow-xl hover:shadow-2xl transition-all duration-300">
+                <CardHeader className="bg-gradient-to-r from-emerald-50 to-blue-50 rounded-t-xl">
+                  <CardTitle className="flex items-center text-gray-800">
+                    <div className="p-2 bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-lg mr-3">
+                      <BarChart3 className="w-5 h-5 text-white" />
+                    </div>
                     Portfolio Performance
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="pt-6">
                   <PerformanceChart data={mockPerformanceHistory} />
                 </CardContent>
               </Card>
               
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <TrendingUp className="w-5 h-5 mr-2" />
+              <Card className="bg-white/70 backdrop-blur-sm border-0 shadow-xl hover:shadow-2xl transition-all duration-300">
+                <CardHeader className="bg-gradient-to-r from-emerald-50 to-blue-50 rounded-t-xl">
+                  <CardTitle className="flex items-center text-gray-800">
+                    <div className="p-2 bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-lg mr-3">
+                      <TrendingUp className="w-5 h-5 text-white" />
+                    </div>
                     Top Performers
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="pt-6">
                   <div className="space-y-4">
                     {mockInvestments
                       .sort((a, b) => b.gainLossPercent - a.gainLossPercent)
