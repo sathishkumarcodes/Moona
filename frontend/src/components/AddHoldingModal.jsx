@@ -31,11 +31,24 @@ const AddHoldingModal = ({ onHoldingAdded }) => {
   
   const { toast } = useToast();
 
+  // Debounce utility function
+  function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+      const later = () => {
+        clearTimeout(timeout);
+        func(...args);
+      };
+      clearTimeout(timeout);
+      timeout = setTimeout(later, wait);
+    };
+  }
+
   // Debounced search function
   const debounceSearch = useCallback(
     debounce((symbol) => {
       if (symbol.length >= 2) {
-        searchSymbol(symbol);
+        searchSymbolInternal(symbol);
       }
     }, 300),
     []
