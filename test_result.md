@@ -201,6 +201,18 @@ backend:
           agent: "testing"
           comment: "Price service working correctly but experiencing expected rate limiting from Yahoo Finance API. This is normal behavior for free APIs. Service properly handles errors and returns appropriate error messages."
 
+  - task: "Asset Search Performance"
+    implemented: true
+    working: true
+    file: "/app/backend/holdings.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "Asset search functionality tested comprehensively. Search endpoints working correctly with response times 0.04s-10s. Popular stocks (AAPL, MSFT, GOOGL) and crypto (BTC, ETH, SOL) search working. Platform endpoints very fast (0.05s-0.06s). System gracefully handles Yahoo Finance rate limiting with fallback to mock data. PERFORMANCE BOTTLENECK IDENTIFIED: Portfolio summary endpoint slow (33.5s) due to batch price API calls hitting rate limits."
+
 frontend:
   - task: "Dashboard Data Loading"
     implemented: true
