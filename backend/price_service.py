@@ -1,7 +1,7 @@
 import httpx
 import asyncio
 from pycoingecko import CoinGeckoAPI
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 from typing import Dict, Optional
 import os
@@ -12,6 +12,10 @@ logger = logging.getLogger(__name__)
 class PriceService:
     def __init__(self):
         self.cg = CoinGeckoAPI()
+        
+        # Simple in-memory cache with 5-minute expiry
+        self.price_cache = {}
+        self.cache_duration = timedelta(minutes=5)
         
         # Alpha Vantage API key (optional, fallback to free APIs if not available)
         self.alpha_vantage_key = os.environ.get('ALPHA_VANTAGE_API_KEY')
@@ -27,6 +31,32 @@ class PriceService:
             'LINK': 'chainlink',
             'UNI': 'uniswap'
         }
+    
+    def _is_cache_valid(self, symbol: str) -> bool:
+        """Check if cached price is still valid"""
+        if symbol not in self.price_cache:
+            return False
+        
+        cache_time = self.price_cache[symbol].get('timestamp')
+        if not cache_time:
+            return False
+            
+        return datetime.now() - cache_time < self.cache_duration
+    
+    def _get_cached_price(self, symbol: str) -> Optional[Dict]:
+        """Get cached price if valid"""
+        if self._is_cache_valid(symbol):
+            cached_data = self.price_cache[symbol].copy()
+            cached_data.pop('timestamp', None)  # Remove timestamp from response
+            return cached_data
+        return None
+    
+    def _cache_price(self, symbol: str, data: Dict):
+        """Cache price data"""
+        if 'error' not in data:  # Only cache successful responses
+            cache_data = data.copy()
+            cache_data['timestamp'] = datetime.now()
+            self.price_cache[symbol] = cache_data
     
     async def get_stock_price(self, symbol: str) -> Dict:
         """Get current stock price using free APIs"""
