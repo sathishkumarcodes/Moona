@@ -13,6 +13,7 @@ import ContributionChart from './ContributionChart';
 import AssetBreakdownChart from './AssetBreakdownChart';
 import AddHoldingModal from './AddHoldingModal';
 import EditHoldingModal from './EditHoldingModal';
+import MoonaLogo from './MoonaLogo';
 import holdingsService from '../services/holdingsService';
 import { useToast } from '../hooks/use-toast';
 
