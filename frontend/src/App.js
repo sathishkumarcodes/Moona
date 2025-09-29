@@ -49,6 +49,14 @@ const AppContent = () => {
     <BrowserRouter>
       <Routes>
         <Route 
+          path="/" 
+          element={
+            <PublicRoute>
+              <LandingPage />
+            </PublicRoute>
+          } 
+        />
+        <Route 
           path="/login" 
           element={
             <PublicRoute>
@@ -64,7 +72,6 @@ const AppContent = () => {
             </ProtectedRoute>
           } 
         />
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
       </Routes>
       <Toaster />
     </BrowserRouter>
