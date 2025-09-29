@@ -123,6 +123,63 @@ export const mockInvestments = [
     gainLoss: 4680.00,
     gainLossPercent: 48.95,
     sector: 'Cryptocurrency'
+  },
+  // Roth IRA Investments
+  {
+    id: 9,
+    symbol: 'VTI',
+    name: 'Vanguard Total Stock Market ETF',
+    type: 'roth_ira',
+    shares: 120,
+    avgCost: 185.60,
+    currentPrice: 245.80,
+    totalValue: 29496.00,
+    totalCost: 22272.00,
+    gainLoss: 7224.00,
+    gainLossPercent: 32.44,
+    sector: 'ETF'
+  },
+  {
+    id: 10,
+    symbol: 'VXUS',
+    name: 'Vanguard Total International Stock ETF',
+    type: 'roth_ira',
+    shares: 80,
+    avgCost: 52.30,
+    currentPrice: 58.75,
+    totalValue: 4700.00,
+    totalCost: 4184.00,
+    gainLoss: 516.00,
+    gainLossPercent: 12.34,
+    sector: 'ETF'
+  },
+  {
+    id: 11,
+    symbol: 'BND',
+    name: 'Vanguard Total Bond Market ETF',
+    type: 'roth_ira',
+    shares: 150,
+    avgCost: 76.20,
+    currentPrice: 74.85,
+    totalValue: 11227.50,
+    totalCost: 11430.00,
+    gainLoss: -202.50,
+    gainLossPercent: -1.77,
+    sector: 'ETF'
+  },
+  {
+    id: 12,
+    symbol: 'QQQ',
+    name: 'Invesco QQQ Trust',
+    type: 'roth_ira',
+    shares: 35,
+    avgCost: 285.40,
+    currentPrice: 368.90,
+    totalValue: 12911.50,
+    totalCost: 9989.00,
+    gainLoss: 2922.50,
+    gainLossPercent: 29.25,
+    sector: 'ETF'
   }
 ];
 
