@@ -96,6 +96,8 @@ class PriceService:
             mock_data = mock_prices[symbol.upper()]
             return {
                 "symbol": symbol.upper(),
+                "name": get_company_name(symbol),
+                "sector": get_sector(symbol),
                 "price": mock_data['price'],
                 "change": mock_data['change'],
                 "change_percent": mock_data['change_percent'],
