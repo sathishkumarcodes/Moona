@@ -184,17 +184,33 @@ export const mockInvestments = [
 ];
 
 export const mockSPYComparison = {
-  portfolioValue: 125480.50,
-  portfolioInvested: 100000.00,
-  portfolioReturn: 25.48,
+  portfolioValue: 185680.50,
+  portfolioInvested: 150000.00,
+  portfolioReturn: 23.79,
   
-  spyValue: 118500.00,
-  spyInvested: 100000.00,
+  spyValue: 177750.00,
+  spyInvested: 150000.00,
   spyReturn: 18.50,
   
-  outperformance: 6.98,
-  absoluteDifference: 6980.50
+  outperformance: 5.29,
+  absoluteDifference: 7930.50
 };
+
+export const mockAllocation = [
+  { type: 'Stocks', value: 47229.50, percentage: 25.43, color: '#059669' },
+  { type: 'Crypto', value: 77180.00, percentage: 41.56, color: '#dc2626' },
+  { type: 'Roth IRA', value: 58335.00, percentage: 31.41, color: '#7c3aed' },
+  { type: 'Cash', value: 2936.00, percentage: 1.58, color: '#6b7280' }
+];
+
+export const mockSectorAllocation = [
+  { sector: 'Technology', value: 35669.00, percentage: 19.21, color: '#3b82f6' },
+  { sector: 'Cryptocurrency', value: 77180.00, percentage: 41.56, color: '#dc2626' },
+  { sector: 'ETF', value: 58335.00, percentage: 31.41, color: '#7c3aed' },
+  { sector: 'Automotive', value: 6264.00, percentage: 3.37, color: '#059669' },
+  { sector: 'Cash', value: 2936.00, percentage: 1.58, color: '#6b7280' },
+  { sector: 'Other', value: 5296.50, percentage: 2.85, color: '#f59e0b' }
+];
 
 export const mockPerformanceHistory = [
   { date: '2024-01-01', portfolio: 100000, spy: 100000 },
