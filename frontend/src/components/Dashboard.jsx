@@ -482,7 +482,7 @@ const Dashboard = () => {
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
                         <span>Total Assets</span>
-                        <span className="font-medium">{mockInvestments.length}</span>
+                        <span className="font-medium">{holdings?.length || 0}</span>
                       </div>
                       <div className="flex justify-between">
                         <span>Sectors</span>
