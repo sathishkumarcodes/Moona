@@ -6,7 +6,7 @@ const API = `${BACKEND_URL}/api`;
 class HoldingsService {
   constructor() {
     this.axios = axios.create({
-      withCredentials: false, // Temporarily disable credentials for testing
+      withCredentials: true,
       timeout: 10000
     });
   }
