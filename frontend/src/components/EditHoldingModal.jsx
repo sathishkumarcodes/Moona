@@ -17,8 +17,10 @@ const EditHoldingModal = ({ holding, open, onClose, onHoldingUpdated }) => {
     name: '',
     shares: '',
     avg_cost: '',
-    sector: ''
+    sector: '',
+    platform: ''
   });
+  const [availablePlatforms, setAvailablePlatforms] = useState([]);
   
   const { toast } = useToast();
 
