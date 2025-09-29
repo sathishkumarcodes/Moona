@@ -2,10 +2,11 @@ import React from "react";
 import "./App.css";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./components/AuthProvider";
-import LoginPage from "./components/LoginPage";
-import Dashboard from "./components/Dashboard";
 import LoadingSpinner from "./components/LoadingSpinner";
 import Navbar from "./components/Navbar";
+import LandingPage from "./components/LandingPage";
+import LoginPage from "./components/LoginPage";
+import Dashboard from "./components/Dashboard";
 import { Toaster } from "./components/ui/toaster";
 
 const ProtectedRoute = ({ children }) => {
