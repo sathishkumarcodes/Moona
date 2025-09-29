@@ -368,7 +368,7 @@ async def get_portfolio_summary(
         
         # Get updated prices
         symbols = [h["symbol"] for h in holdings]
-        asset_types = {h["symbol"]: h["type"] if h["type"] != 'roth_ira' else 'stock' for h in holdings}
+        asset_types = {h["symbol"]: h["type"] if h["type"] in ['stock', 'crypto'] else 'stock' for h in holdings}
         price_data = await price_service.get_multiple_prices(symbols, asset_types)
         
         # Calculate totals with current prices
