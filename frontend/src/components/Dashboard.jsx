@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { TrendingUp, TrendingDown, DollarSign, PieChart, BarChart3, Activity, Target, Wallet } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, PieChart as PieChartIcon, BarChart3, Activity, Target, Wallet } from 'lucide-react';
 import { 
   mockPortfolio, 
   mockInvestments, 
