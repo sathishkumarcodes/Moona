@@ -1,16 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { TrendingUp, TrendingDown, DollarSign, PieChart as PieChartIcon, BarChart3, Activity, Target, Wallet } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, PieChart as PieChartIcon, BarChart3, Activity, Target, Wallet, Plus, RefreshCw } from 'lucide-react';
 import { 
-  mockPortfolio, 
-  mockInvestments, 
   mockSPYComparison, 
-  mockPerformanceHistory, 
-  mockAllocation, 
-  mockSectorAllocation,
   mockMonthlyContributions 
 } from '../mock';
 import InvestmentList from './InvestmentList';
@@ -19,6 +14,10 @@ import PerformanceChart from './PerformanceChart';
 import PieChart from './PieChart';
 import ContributionChart from './ContributionChart';
 import AssetBreakdownChart from './AssetBreakdownChart';
+import AddHoldingModal from './AddHoldingModal';
+import EditHoldingModal from './EditHoldingModal';
+import holdingsService from '../services/holdingsService';
+import { useToast } from '../hooks/use-toast';
 
 const Dashboard = () => {
   const [selectedTab, setSelectedTab] = useState('overview');
