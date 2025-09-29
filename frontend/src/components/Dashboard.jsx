@@ -114,81 +114,112 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Portfolio Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card className="bg-white/70 backdrop-blur-sm border-0 shadow-xl hover:shadow-2xl transition-all duration-300">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Total Value</CardTitle>
-              <div className="p-2 bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-lg">
-                <DollarSign className="h-4 w-4 text-white" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
-                {formatCurrency(mockPortfolio.totalValue)}
-              </div>
-              <div className={`text-sm flex items-center mt-2 ${getChangeColor(mockPortfolio.dailyChange)}`}>
-                {mockPortfolio.dailyChange >= 0 ? (
-                  <TrendingUp className="w-4 h-4 mr-1" />
-                ) : (
-                  <TrendingDown className="w-4 h-4 mr-1" />
-                )}
-                {formatCurrency(Math.abs(mockPortfolio.dailyChange))} ({formatPercent(mockPortfolio.dailyChangePercent)}) today
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white/70 backdrop-blur-sm border-0 shadow-xl hover:shadow-2xl transition-all duration-300">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Total Cost</CardTitle>
-              <div className="p-2 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg">
-                <PieChartIcon className="h-4 w-4 text-white" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
-                {formatCurrency(mockPortfolio.totalCost)}
-              </div>
-              <p className="text-sm text-gray-600 mt-2">Initial investment</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white/70 backdrop-blur-sm border-0 shadow-xl hover:shadow-2xl transition-all duration-300">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Total Gain/Loss</CardTitle>
-              <div className={`p-2 rounded-lg ${mockPortfolio.totalGainLoss >= 0 ? 'bg-gradient-to-r from-emerald-500 to-emerald-600' : 'bg-gradient-to-r from-red-500 to-red-600'}`}>
-                <BarChart3 className="h-4 w-4 text-white" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className={`text-3xl font-bold ${getChangeColor(mockPortfolio.totalGainLoss)}`}>
-                {formatCurrency(mockPortfolio.totalGainLoss)}
-              </div>
-              <Badge variant="outline" className={`mt-2 ${getChangeBgColor(mockPortfolio.totalGainLoss)} border-0 font-semibold`}>
-                <span className={getChangeColor(mockPortfolio.totalGainLoss)}>
-                  {formatPercent(mockPortfolio.totalGainLossPercent)}
-                </span>
-              </Badge>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white/70 backdrop-blur-sm border-0 shadow-xl hover:shadow-2xl transition-all duration-300">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Assets</CardTitle>
-              <div className="p-2 bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg">
-                <Activity className="h-4 w-4 text-white" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">{mockInvestments.length}</div>
-              <div className="text-sm text-gray-600 mt-2">
-                {mockInvestments.filter(inv => inv.type === 'stock').length} stocks, {' '}
-                {mockInvestments.filter(inv => inv.type === 'crypto').length} crypto, {' '}
-                {mockInvestments.filter(inv => inv.type === 'roth_ira').length} roth ira
-              </div>
-            </CardContent>
-          </Card>
+        {/* Action Bar */}
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">Portfolio Dashboard</h2>
+            <p className="text-gray-600">Manage and track your investments in real-time</p>
+          </div>
+          <div className="flex space-x-3">
+            <Button
+              onClick={refreshData}
+              disabled={isRefreshing}
+              variant="outline"
+              className="flex items-center space-x-2"
+            >
+              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              <span>Refresh</span>
+            </Button>
+            <AddHoldingModal onHoldingAdded={handleHoldingAdded} />
+          </div>
         </div>
+
+        {/* Portfolio Summary Cards */}
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {[...Array(4)].map((_, i) => (
+              <Card key={i} className="bg-white/70 backdrop-blur-sm border-0 shadow-xl">
+                <CardContent className="p-6">
+                  <div className="animate-pulse">
+                    <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                    <div className="h-8 bg-gray-200 rounded mb-2"></div>
+                    <div className="h-3 bg-gray-200 rounded"></div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <Card className="bg-white/70 backdrop-blur-sm border-0 shadow-xl hover:shadow-2xl transition-all duration-300">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-gray-600">Total Value</CardTitle>
+                <div className="p-2 bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-lg">
+                  <DollarSign className="h-4 w-4 text-white" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+                  {formatCurrency(portfolioSummary?.total_value || 0)}
+                </div>
+                <div className="text-sm text-gray-600 mt-2">
+                  Live market prices
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white/70 backdrop-blur-sm border-0 shadow-xl hover:shadow-2xl transition-all duration-300">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-gray-600">Total Cost</CardTitle>
+                <div className="p-2 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg">
+                  <PieChartIcon className="h-4 w-4 text-white" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+                  {formatCurrency(portfolioSummary?.total_cost || 0)}
+                </div>
+                <p className="text-sm text-gray-600 mt-2">Initial investment</p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white/70 backdrop-blur-sm border-0 shadow-xl hover:shadow-2xl transition-all duration-300">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-gray-600">Total Gain/Loss</CardTitle>
+                <div className={`p-2 rounded-lg ${(portfolioSummary?.total_gain_loss || 0) >= 0 ? 'bg-gradient-to-r from-emerald-500 to-emerald-600' : 'bg-gradient-to-r from-red-500 to-red-600'}`}>
+                  <BarChart3 className="h-4 w-4 text-white" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className={`text-3xl font-bold ${getChangeColor(portfolioSummary?.total_gain_loss || 0)}`}>
+                  {formatCurrency(portfolioSummary?.total_gain_loss || 0)}
+                </div>
+                <Badge variant="outline" className={`mt-2 ${getChangeBgColor(portfolioSummary?.total_gain_loss || 0)} border-0 font-semibold`}>
+                  <span className={getChangeColor(portfolioSummary?.total_gain_loss || 0)}>
+                    {formatPercent(portfolioSummary?.total_gain_loss_percent || 0)}
+                  </span>
+                </Badge>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white/70 backdrop-blur-sm border-0 shadow-xl hover:shadow-2xl transition-all duration-300">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-gray-600">Assets</CardTitle>
+                <div className="p-2 bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg">
+                  <Activity className="h-4 w-4 text-white" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">{portfolioSummary?.asset_count || 0}</div>
+                <div className="text-sm text-gray-600 mt-2">
+                  {portfolioSummary?.asset_breakdown?.stocks || 0} stocks, {' '}
+                  {portfolioSummary?.asset_breakdown?.crypto || 0} crypto, {' '}
+                  {portfolioSummary?.asset_breakdown?.roth_ira || 0} roth ira
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Main Content Tabs */}
         <Tabs value={selectedTab} onValueChange={setSelectedTab} className="w-full">
