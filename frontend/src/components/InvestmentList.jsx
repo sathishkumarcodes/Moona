@@ -39,6 +39,34 @@ const InvestmentList = ({ investments, onEdit, onDelete, isLoading }) => {
     return value >= 0 ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200';
   };
 
+  const handleDelete = async (investment) => {
+    if (!window.confirm(`Are you sure you want to delete ${investment.symbol}?`)) {
+      return;
+    }
+
+    setDeletingId(investment.id);
+    try {
+      await axios.delete(`${API}/holdings/${investment.id}`, {
+        withCredentials: true
+      });
+
+      toast({
+        title: "Holding Deleted",
+        description: `Successfully deleted ${investment.symbol} from your portfolio`,
+      });
+
+      if (onDelete) onDelete();
+    } catch (error) {
+      toast({
+        title: "Delete Failed",
+        description: error.response?.data?.detail || "Failed to delete holding",
+        variant: "destructive"
+      });
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   const filteredInvestments = investments
     .filter(investment => {
       const matchesSearch = investment.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -49,9 +77,9 @@ const InvestmentList = ({ investments, onEdit, onDelete, isLoading }) => {
     .sort((a, b) => {
       switch (sortBy) {
         case 'value':
-          return b.totalValue - a.totalValue;
+          return b.total_value - a.total_value;
         case 'gainLoss':
-          return b.gainLossPercent - a.gainLossPercent;
+          return b.gain_loss_percent - a.gain_loss_percent;
         case 'symbol':
           return a.symbol.localeCompare(b.symbol);
         default:
