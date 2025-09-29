@@ -31,6 +31,7 @@ class HoldingCreate(BaseModel):
     shares: float = Field(..., gt=0)
     avg_cost: float = Field(..., gt=0)
     sector: Optional[str] = Field(None, max_length=100)
+    platform: Optional[str] = Field(None, max_length=100)
 
 class HoldingUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=200)
