@@ -211,33 +211,33 @@ const Dashboard = () => {
           onClose={() => setEditingHolding(null)}
           onHoldingUpdated={handleHoldingUpdated}
         />
-        {/* Floating Action Bar */}
-        <div className="fixed top-20 right-4 z-20 flex flex-col gap-2">
-          <div className="flex items-center gap-2 bg-white/90 backdrop-blur-md border border-white/50 rounded-lg p-2 shadow-lg">
-            <div className="flex items-center space-x-2 px-2 py-1 bg-blue-50 border border-blue-200 rounded text-xs">
-              <Activity className="w-3 h-3 text-blue-600" />
-              <span className="text-blue-700 font-medium">
-                {new Date().toLocaleTimeString()}
-              </span>
-            </div>
-            <Button
-              onClick={refreshData}
-              disabled={isRefreshing}
-              size="sm"
-              variant="outline"
-              className="h-8 w-8 p-0"
-            >
-              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-            </Button>
-            <Button
-              onClick={exportToExcel}
-              size="sm"
-              className="h-8 bg-emerald-500 hover:bg-emerald-600 text-white"
-            >
-              <Download className="w-4 h-4" />
-            </Button>
-            <AddHoldingModal onHoldingAdded={handleHoldingAdded} />
+        {/* Simple Action Bar */}
+        <div className="flex justify-end items-center gap-3 mb-6">
+          <div className="flex items-center space-x-2 px-3 py-1.5 bg-white/80 backdrop-blur-sm border border-slate-200 rounded-lg text-sm">
+            <Activity className="w-4 h-4 text-blue-600" />
+            <span className="text-slate-700">
+              Last updated: {new Date().toLocaleTimeString()}
+            </span>
           </div>
+          <Button
+            onClick={refreshData}
+            disabled={isRefreshing}
+            size="sm"
+            variant="outline"
+            className="bg-white/80 backdrop-blur-sm"
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+          <Button
+            onClick={exportToExcel}
+            size="sm"
+            className="bg-emerald-500 hover:bg-emerald-600 text-white"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Export Excel
+          </Button>
+          <AddHoldingModal onHoldingAdded={handleHoldingAdded} />
         </div>
 
         {/* Enhanced KPI Table with Premium Design */}
