@@ -64,17 +64,74 @@ const AddHoldingModal = ({ onHoldingAdded }) => {
     if (field === 'type' && value) {
       loadPlatforms(value);
     }
+    
+    // Auto-search as user types symbol
+    if (field === 'symbol' && value) {
+      debounceSearch(value.toUpperCase());
+    }
   };
 
   const loadPlatforms = async (assetType) => {
     try {
       const response = await axios.get(`${API}/holdings/platforms/${assetType}`, {
-        withCredentials: true
+        withCredentials: true,
+        timeout: 5000  // 5 second timeout
       });
       setAvailablePlatforms(response.data.platforms || []);
     } catch (error) {
       console.error('Error loading platforms:', error);
       setAvailablePlatforms([]);
+    }
+  };
+
+  const searchSymbolInternal = async (symbol) => {
+    if (!symbol.trim()) {
+      return;
+    }
+
+    setIsSearching(true);
+    setCurrentPrice(null);
+
+    try {
+      const response = await axios.get(`${API}/holdings/search/${symbol}`, {
+        withCredentials: true,
+        timeout: 8000  // 8 second timeout for search
+      });
+
+      const data = response.data;
+      setCurrentPrice(data);
+      
+      // Auto-fill form fields based on search result
+      if (data.name) {
+        setFormData(prev => ({
+          ...prev,
+          name: data.name,
+          sector: data.sector || prev.sector
+        }));
+      }
+      
+      // Auto-detect asset type
+      if (data.symbol && ['BTC', 'ETH', 'SOL', 'ADA'].includes(data.symbol)) {
+        setFormData(prev => ({ ...prev, type: 'crypto' }));
+        loadPlatforms('crypto');
+      } else if (data.current_price && !formData.type) {
+        setFormData(prev => ({ ...prev, type: 'stock' }));
+        loadPlatforms('stock');
+      }
+
+    } catch (error) {
+      if (error.code === 'ECONNABORTED') {
+        toast({
+          title: "Search Timeout",
+          description: "Search is taking too long. Please try again.",
+          variant: "destructive"
+        });
+      } else {
+        console.error('Search error:', error);
+        // Don't show error for auto-search, only for manual search
+      }
+    } finally {
+      setIsSearching(false);
     }
   };
 
@@ -88,50 +145,7 @@ const AddHoldingModal = ({ onHoldingAdded }) => {
       return;
     }
 
-    setIsSearching(true);
-    setCurrentPrice(null);
-
-    try {
-      const response = await axios.get(`${API}/holdings/search/${formData.symbol}`, {
-        withCredentials: true
-      });
-
-      setCurrentPrice(response.data);
-      
-      // Auto-detect type based on symbol (basic heuristic)
-      const symbol = formData.symbol.toUpperCase();
-      const cryptoSymbols = ['BTC', 'ETH', 'SOL', 'ADA', 'DOT', 'MATIC', 'LINK', 'UNI'];
-      
-      let detectedType = 'stock';
-      if (cryptoSymbols.includes(symbol)) {
-        detectedType = 'crypto';
-      }
-      
-      handleInputChange('type', detectedType);
-      await loadPlatforms(detectedType);
-
-      // Auto-populate name and sector if returned
-      if (response.data.name) {
-        handleInputChange('name', response.data.name);
-      }
-      if (response.data.sector) {
-        handleInputChange('sector', response.data.sector);
-      }
-
-      toast({
-        title: "Symbol Found",
-        description: `Current price: $${response.data.current_price.toFixed(2)}`,
-      });
-
-    } catch (error) {
-      toast({
-        title: "Symbol Not Found",
-        description: error.response?.data?.detail || "Could not find symbol. Please check and try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsSearching(false);
-    }
+    await searchSymbolInternal(formData.symbol);
   };
 
   const calculatePreview = () => {
