@@ -4,6 +4,7 @@ from datetime import datetime, timezone, timedelta
 from motor.motor_asyncio import AsyncIOMotorDatabase, AsyncIOMotorClient
 import os
 import logging
+import httpx
 from typing import Optional
 from dotenv import load_dotenv
 from pathlib import Path
