@@ -172,8 +172,18 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-indigo-900 relative overflow-hidden">
+      {/* Animated Background Elements */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 left-10 w-32 h-32 bg-purple-500/20 rounded-full blur-xl animate-pulse"></div>
+        <div className="absolute top-40 right-20 w-24 h-24 bg-pink-500/20 rounded-full blur-xl animate-bounce"></div>
+        <div className="absolute bottom-32 left-1/4 w-40 h-40 bg-cyan-500/20 rounded-full blur-2xl animate-pulse"></div>
+        <div className="absolute top-1/3 right-1/3 text-6xl opacity-10 animate-float">🌙</div>
+        <div className="absolute bottom-1/4 left-1/5 text-4xl opacity-10 animate-float delay-1000">⭐</div>
+        <div className="absolute top-1/4 left-2/3 text-5xl opacity-10 animate-float delay-2000">✨</div>
+      </div>
+      
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
         {/* Edit Holding Modal */}
         <EditHoldingModal
