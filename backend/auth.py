@@ -1,13 +1,21 @@
 from fastapi import APIRouter, HTTPException, Response, Request, Depends
 from pydantic import BaseModel
 from datetime import datetime, timezone, timedelta
-from motor.motor_asyncio import AsyncIOMotorDatabase
+from motor.motor_asyncio import AsyncIOMotorDatabase, AsyncIOMotorClient
 import os
 import logging
 from typing import Optional
+from dotenv import load_dotenv
+from pathlib import Path
 
-# Get database from server.py
-from server import db
+# Load environment variables
+ROOT_DIR = Path(__file__).parent
+load_dotenv(ROOT_DIR / '.env')
+
+# MongoDB connection
+mongo_url = os.environ['MONGO_URL']
+client = AsyncIOMotorClient(mongo_url)
+db = client[os.environ['DB_NAME']]
 
 logger = logging.getLogger(__name__)
 
