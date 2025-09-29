@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 from typing import List
 import uuid
 from datetime import datetime
+from auth import auth_router
 
 
 ROOT_DIR = Path(__file__).parent
