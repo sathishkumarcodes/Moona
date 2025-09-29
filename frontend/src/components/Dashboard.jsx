@@ -714,7 +714,7 @@ const Dashboard = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-gray-900">
-                    {formatCurrency(mockMonthlyContributions.reduce((sum, item) => sum + item.amount, 0) / mockMonthlyContributions.length)}
+                    {portfolioSummary?.totalValue ? formatCurrency(portfolioSummary.totalValue * 0.05) : formatCurrency(0)}
                   </div>
                   <div className="text-sm text-gray-600 mt-1">contribution</div>
                 </CardContent>
