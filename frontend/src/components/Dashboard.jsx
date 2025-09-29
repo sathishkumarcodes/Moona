@@ -444,7 +444,7 @@ const Dashboard = () => {
                   <div>
                     <h4 className="font-medium text-gray-900 mb-3">By Asset Type</h4>
                     <div className="space-y-2">
-                      {mockAllocation.map((item, index) => (
+                      {allocation.assetAllocation.map((item, index) => (
                         <div key={index} className="flex justify-between text-sm">
                           <span className="flex items-center">
                             <div 
