@@ -182,31 +182,76 @@ const Dashboard = () => {
           onClose={() => setEditingHolding(null)}
           onHoldingUpdated={handleHoldingUpdated}
         />
-        {/* Action Bar */}
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">Portfolio Dashboard</h2>
-            <p className="text-gray-600">Manage and track your investments in real-time</p>
-          </div>
-          <div className="flex space-x-3">
-            <Button
-              onClick={refreshData}
-              disabled={isRefreshing}
-              variant="outline"
-              className="flex items-center space-x-2"
-            >
-              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-              <span>Refresh</span>
-            </Button>
-            <Button
-              onClick={exportToExcel}
-              variant="outline"
-              className="flex items-center space-x-2 border-green-200 text-green-700 hover:bg-green-50 hover:border-green-300"
-            >
-              <Download className="w-4 h-4" />
-              <span>Export Excel</span>
-            </Button>
-            <AddHoldingModal onHoldingAdded={handleHoldingAdded} />
+        {/* Enhanced Action Bar with Glass Morphism */}
+        <div className="relative mb-8">
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-400/10 via-purple-400/10 to-pink-400/10 rounded-2xl blur-xl"></div>
+          <div className="relative bg-white/80 backdrop-blur-xl border border-white/30 rounded-2xl p-6 shadow-2xl">
+            <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center space-y-4 lg:space-y-0">
+              <div className="space-y-2">
+                <div className="flex items-center space-x-3">
+                  <div className="relative">
+                    <div className="absolute -inset-1 bg-gradient-to-r from-emerald-600 to-blue-600 rounded-xl blur opacity-60 animate-pulse"></div>
+                    <div className="relative p-3 bg-gradient-to-r from-emerald-500 to-blue-600 rounded-xl shadow-lg">
+                      <BarChart3 className="w-7 h-7 text-white" />
+                    </div>
+                  </div>
+                  <div>
+                    <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 bg-clip-text text-transparent">
+                      Investment Portfolio
+                    </h1>
+                    <p className="text-slate-600 font-medium">Real-time wealth management & analytics</p>
+                  </div>
+                </div>
+                
+                {/* Live Metrics Strip */}
+                <div className="flex items-center space-x-6 text-sm">
+                  <div className="flex items-center space-x-2 px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-full">
+                    <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                    <span className="text-emerald-700 font-semibold">Live Data</span>
+                  </div>
+                  <div className="flex items-center space-x-2 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-full">
+                    <Activity className="w-4 h-4 text-blue-600" />
+                    <span className="text-blue-700 font-semibold">
+                      Last updated: {new Date().toLocaleTimeString()}
+                    </span>
+                  </div>
+                  {portfolioSummary && (
+                    <div className="flex items-center space-x-2 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-full">
+                      <Target className="w-4 h-4 text-amber-600" />
+                      <span className="text-amber-700 font-semibold">
+                        {portfolioSummary.asset_count || 0} Assets Tracked
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              {/* Enhanced Action Buttons */}
+              <div className="flex flex-wrap items-center gap-3">
+                <Button
+                  onClick={refreshData}
+                  disabled={isRefreshing}
+                  className="group relative overflow-hidden bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+                  <RefreshCw className={`w-4 h-4 mr-2 relative z-10 ${isRefreshing ? 'animate-spin' : ''}`} />
+                  <span className="relative z-10 font-semibold">
+                    {isRefreshing ? 'Refreshing...' : 'Refresh'}
+                  </span>
+                </Button>
+                
+                <Button
+                  onClick={exportToExcel}
+                  className="group relative overflow-hidden bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/25 to-white/0 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+                  <Download className="w-4 h-4 mr-2 relative z-10" />
+                  <span className="relative z-10 font-semibold">Export Excel</span>
+                </Button>
+                
+                <AddHoldingModal onHoldingAdded={handleHoldingAdded} />
+              </div>
+            </div>
           </div>
         </div>
 
