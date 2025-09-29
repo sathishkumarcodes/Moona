@@ -34,9 +34,10 @@ const PublicRoute = ({ children }) => {
     return <LoadingSpinner />;
   }
   
-  if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
-  }
+  // For testing purposes, bypass authentication  
+  // if (isAuthenticated) {
+  //   return <Navigate to="/dashboard" replace />;
+  // }
   
   return children;
 };
