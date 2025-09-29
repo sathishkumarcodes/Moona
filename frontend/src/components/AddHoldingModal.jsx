@@ -65,6 +65,14 @@ const AddHoldingModal = ({ onHoldingAdded }) => {
         handleInputChange('type', 'stock');
       }
 
+      // Auto-populate name and sector if returned
+      if (response.data.name) {
+        handleInputChange('name', response.data.name);
+      }
+      if (response.data.sector) {
+        handleInputChange('sector', response.data.sector);
+      }
+
       toast({
         title: "Symbol Found",
         description: `Current price: $${response.data.current_price.toFixed(2)}`,
