@@ -1,11 +1,11 @@
 // Mock data for investment dashboard
 
 export const mockPortfolio = {
-  totalValue: 125480.50,
-  totalCost: 100000.00,
-  totalGainLoss: 25480.50,
-  totalGainLossPercent: 25.48,
-  dailyChange: 1250.30,
+  totalValue: 185680.50,
+  totalCost: 150000.00,
+  totalGainLoss: 35680.50,
+  totalGainLossPercent: 23.79,
+  dailyChange: 1850.30,
   dailyChangePercent: 1.01
 };
 
