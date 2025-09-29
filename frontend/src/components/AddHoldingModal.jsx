@@ -151,7 +151,8 @@ const AddHoldingModal = ({ onHoldingAdded }) => {
         type: formData.type,
         shares: parseFloat(formData.shares),
         avg_cost: parseFloat(formData.avg_cost),
-        sector: formData.sector || null
+        sector: formData.sector || null,
+        platform: formData.platform
       };
 
       const response = await axios.post(`${API}/holdings`, payload, {
