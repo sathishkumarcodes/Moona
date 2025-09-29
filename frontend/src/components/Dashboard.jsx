@@ -258,8 +258,8 @@ const Dashboard = () => {
                 </CardHeader>
                 <CardContent className="pt-6">
                   <div className="space-y-4">
-                    {mockInvestments
-                      .sort((a, b) => b.gainLossPercent - a.gainLossPercent)
+                    {holdings
+                      .sort((a, b) => b.gain_loss_percent - a.gain_loss_percent)
                       .slice(0, 6)
                       .map((investment) => (
                         <div key={investment.id} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0">
