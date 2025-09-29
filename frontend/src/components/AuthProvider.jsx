@@ -37,9 +37,9 @@ export const AuthProvider = ({ children }) => {
             // Clean URL fragment immediately
             window.history.replaceState({}, document.title, window.location.pathname);
             
-            // Exchange session_id for user data and session_token
-            const response = await axios.get('https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data', {
-              headers: { 'X-Session-ID': sessionId }
+            // Exchange session_id for user data through our backend proxy
+            const response = await axios.get(`${API}/auth/oauth-session/${sessionId}`, {
+              withCredentials: true
             });
             
             const userData = response.data;
