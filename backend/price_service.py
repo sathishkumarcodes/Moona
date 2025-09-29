@@ -114,6 +114,8 @@ class PriceService:
             
             return {
                 "symbol": symbol.upper(),
+                "name": get_company_name(symbol),
+                "sector": get_sector(symbol),
                 "price": round(price, 2),
                 "change": round(change, 2),
                 "change_percent": round(change_percent, 2),
