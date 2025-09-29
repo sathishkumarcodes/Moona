@@ -176,7 +176,7 @@ class PriceService:
         """Get stock price from Alpha Vantage (requires API key)"""
         try:
             async with httpx.AsyncClient() as client:
-                url = f"https://www.alphavantage.co/query"
+                url = "https://www.alphavantage.co/query"
                 params = {
                     'function': 'GLOBAL_QUOTE',
                     'symbol': symbol,
