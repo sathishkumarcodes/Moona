@@ -402,7 +402,7 @@ const Dashboard = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <PerformanceChart data={mockPerformanceHistory} showComparison={true} />
+                <PerformanceChart data={performanceHistory} showComparison={true} />
               </CardContent>
             </Card>
           </TabsContent>
