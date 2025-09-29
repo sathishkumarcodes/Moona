@@ -56,6 +56,11 @@ export const AuthProvider = ({ children }) => {
               picture: userData.picture
             });
             setIsAuthenticated(true);
+            
+            // Redirect to dashboard after successful authentication
+            setTimeout(() => {
+              window.location.href = '/dashboard';
+            }, 100);
           } catch (error) {
             console.error('Authentication error:', error);
           }
