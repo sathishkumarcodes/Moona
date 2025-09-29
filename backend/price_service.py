@@ -210,15 +210,24 @@ class PriceService:
             logger.error(f"Alpha Vantage API error for {symbol}: {str(e)}")
             raise e
     
-    def get_crypto_price(self, symbol: str) -> Dict:
-        """Get crypto price from CoinGecko (free, no API key required)"""
+    async def get_crypto_price(self, symbol: str) -> Dict:
+        """Get crypto price from CoinGecko (free, no API key required) with caching"""
         try:
+            # Check cache first
+            cached_data = self._get_cached_price(symbol)
+            if cached_data:
+                logger.info(f"Using cached crypto price for {symbol}")
+                return cached_data
+            
             # Map symbol to CoinGecko ID
             coin_id = self.crypto_symbol_map.get(symbol.upper())
             if not coin_id:
-                return self._get_mock_crypto_price(symbol)
+                result = self._get_mock_crypto_price(symbol)
+                self._cache_price(symbol, result)
+                return result
             
-            # Get current price data
+            # Get current price data with timeout
+            await asyncio.sleep(0.1)  # Rate limiting for CoinGecko
             price_data = self.cg.get_price(
                 ids=coin_id, 
                 vs_currencies='usd', 
@@ -227,14 +236,16 @@ class PriceService:
             )
             
             if coin_id not in price_data:
-                return self._get_mock_crypto_price(symbol)
+                result = self._get_mock_crypto_price(symbol)
+                self._cache_price(symbol, result)
+                return result
             
             coin_data = price_data[coin_id]
             current_price = coin_data['usd']
             change_24h = coin_data.get('usd_24h_change', 0)
             volume_24h = coin_data.get('usd_24h_vol', 0)
             
-            return {
+            result = {
                 "symbol": symbol.upper(),
                 "price": current_price,
                 "change_24h": change_24h,
@@ -244,10 +255,15 @@ class PriceService:
                 "last_updated": datetime.now().isoformat(),
                 "source": "coingecko"
             }
+            # Cache the result
+            self._cache_price(symbol, result)
+            return result
             
         except Exception as e:
             logger.error(f"CoinGecko API error for {symbol}: {str(e)}")
-            return self._get_mock_crypto_price(symbol)
+            result = self._get_mock_crypto_price(symbol)
+            self._cache_price(symbol, result)
+            return result
     
     def _get_mock_crypto_price(self, symbol: str) -> Dict:
         """Fallback mock crypto prices for demonstration"""
