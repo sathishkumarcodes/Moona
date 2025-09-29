@@ -6,7 +6,7 @@ import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Search, Filter, TrendingUp, TrendingDown } from 'lucide-react';
 
-const InvestmentList = ({ investments }) => {
+const InvestmentList = ({ investments, onEdit, onDelete, isLoading }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [sortBy, setSortBy] = useState('value');
