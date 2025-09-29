@@ -187,6 +187,14 @@ const Dashboard = () => {
               <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
               <span>Refresh</span>
             </Button>
+            <Button
+              onClick={exportToExcel}
+              variant="outline"
+              className="flex items-center space-x-2 border-green-200 text-green-700 hover:bg-green-50 hover:border-green-300"
+            >
+              <Download className="w-4 h-4" />
+              <span>Export Excel</span>
+            </Button>
             <AddHoldingModal onHoldingAdded={handleHoldingAdded} />
           </div>
         </div>
