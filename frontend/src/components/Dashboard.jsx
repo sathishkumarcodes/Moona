@@ -145,7 +145,10 @@ const Dashboard = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Performance Chart</CardTitle>
+                  <CardTitle className="flex items-center">
+                    <BarChart3 className="w-5 h-5 mr-2" />
+                    Portfolio Performance
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <PerformanceChart data={mockPerformanceHistory} />
@@ -154,22 +157,37 @@ const Dashboard = () => {
               
               <Card>
                 <CardHeader>
-                  <CardTitle>Top Performers</CardTitle>
+                  <CardTitle className="flex items-center">
+                    <TrendingUp className="w-5 h-5 mr-2" />
+                    Top Performers
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
                     {mockInvestments
                       .sort((a, b) => b.gainLossPercent - a.gainLossPercent)
-                      .slice(0, 5)
+                      .slice(0, 6)
                       .map((investment) => (
-                        <div key={investment.id} className="flex items-center justify-between">
-                          <div>
-                            <div className="font-medium">{investment.symbol}</div>
-                            <div className="text-sm text-gray-600">{investment.name}</div>
+                        <div key={investment.id} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+                              <span className="text-xs font-bold text-gray-700">
+                                {investment.symbol.substring(0, 2)}
+                              </span>
+                            </div>
+                            <div>
+                              <div className="font-medium text-sm">{investment.symbol}</div>
+                              <div className="text-xs text-gray-600 capitalize">{investment.type.replace('_', ' ')}</div>
+                            </div>
                           </div>
                           <div className="text-right">
-                            <div className="font-medium">{formatCurrency(investment.totalValue)}</div>
-                            <div className={`text-sm ${getChangeColor(investment.gainLoss)}`}>
+                            <div className="font-medium text-sm">{formatCurrency(investment.totalValue)}</div>
+                            <div className={`text-xs flex items-center ${getChangeColor(investment.gainLoss)}`}>
+                              {investment.gainLoss >= 0 ? (
+                                <TrendingUp className="w-3 h-3 mr-1" />
+                              ) : (
+                                <TrendingDown className="w-3 h-3 mr-1" />
+                              )}
                               {formatPercent(investment.gainLossPercent)}
                             </div>
                           </div>
@@ -179,6 +197,195 @@ const Dashboard = () => {
                 </CardContent>
               </Card>
             </div>
+
+            {/* Quick Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm text-gray-600">Asset Breakdown</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>Stocks</span>
+                      <span className="font-medium">{mockInvestments.filter(i => i.type === 'stock').length}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span>Crypto</span>
+                      <span className="font-medium">{mockInvestments.filter(i => i.type === 'crypto').length}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span>Roth IRA</span>
+                      <span className="font-medium">{mockInvestments.filter(i => i.type === 'roth_ira').length}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm text-gray-600">Best Performer</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {(() => {
+                    const best = mockInvestments.sort((a, b) => b.gainLossPercent - a.gainLossPercent)[0];
+                    return (
+                      <div>
+                        <div className="font-semibold">{best.symbol}</div>
+                        <div className="text-sm text-gray-600">{best.name}</div>
+                        <div className="text-lg font-bold text-emerald-600 mt-1">
+                          +{formatPercent(best.gainLossPercent)}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm text-gray-600">Monthly Avg</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-gray-900">
+                    {formatCurrency(mockMonthlyContributions.reduce((sum, item) => sum + item.amount, 0) / mockMonthlyContributions.length)}
+                  </div>
+                  <div className="text-sm text-gray-600 mt-1">contribution</div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="analytics" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Activity className="w-5 h-5 mr-2" />
+                    Asset Type Performance
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <AssetBreakdownChart data={mockPerformanceHistory} />
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Wallet className="w-5 h-5 mr-2" />
+                    Monthly Contributions
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ContributionChart data={mockMonthlyContributions} />
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <BarChart3 className="w-5 h-5 mr-2" />
+                  Portfolio vs SPY Comparison
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <PerformanceChart data={mockPerformanceHistory} showComparison={true} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="allocation" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <PieChart className="w-5 h-5 mr-2" />
+                    Asset Type Allocation
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <PieChart data={mockAllocation} size={250} />
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Target className="w-5 h-5 mr-2" />
+                    Sector Allocation
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <PieChart data={mockSectorAllocation} size={250} />
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Allocation Summary */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Allocation Summary</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div>
+                    <h4 className="font-medium text-gray-900 mb-3">By Asset Type</h4>
+                    <div className="space-y-2">
+                      {mockAllocation.map((item, index) => (
+                        <div key={index} className="flex justify-between text-sm">
+                          <span className="flex items-center">
+                            <div 
+                              className="w-3 h-3 rounded-full mr-2" 
+                              style={{ backgroundColor: item.color }}
+                            />
+                            {item.type}
+                          </span>
+                          <span className="font-medium">{formatCurrency(item.value)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="font-medium text-gray-900 mb-3">Risk Profile</h4>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span>High Risk (Crypto)</span>
+                        <span className="font-medium">41.56%</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Medium Risk (Stocks)</span>
+                        <span className="font-medium">25.43%</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Low Risk (ETFs)</span>
+                        <span className="font-medium">31.41%</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="font-medium text-gray-900 mb-3">Diversification</h4>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span>Total Assets</span>
+                        <span className="font-medium">{mockInvestments.length}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Sectors</span>
+                        <span className="font-medium">5</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Largest Holding</span>
+                        <span className="font-medium">17.75%</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="investments">
