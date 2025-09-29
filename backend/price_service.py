@@ -315,18 +315,52 @@ class PriceService:
             return {"error": f"Could not fetch price for {symbol}"}
     
     async def get_multiple_prices(self, symbols: list, asset_types: dict = None) -> Dict:
-        """Get prices for multiple symbols efficiently"""
+        """Get prices for multiple symbols efficiently with rate limiting"""
         price_data = {}
         
-        for symbol in symbols:
-            try:
+        # Process in small batches to avoid overwhelming APIs
+        batch_size = 3
+        for i in range(0, len(symbols), batch_size):
+            batch = symbols[i:i + batch_size]
+            
+            # Create tasks for concurrent processing
+            tasks = []
+            for symbol in batch:
                 asset_type = asset_types.get(symbol) if asset_types else None
-                result = await self.get_price(symbol, asset_type)
-                price_data[symbol] = result
-            except Exception as e:
-                logger.error(f"Error getting price for {symbol}: {str(e)}")
-                # Return mock data as fallback
-                price_data[symbol] = self._get_mock_price(symbol)
+                tasks.append(self.get_price(symbol, asset_type))
+            
+            # Execute batch concurrently with timeout
+            try:
+                results = await asyncio.wait_for(
+                    asyncio.gather(*tasks, return_exceptions=True), 
+                    timeout=15.0  # 15 second timeout per batch
+                )
+                
+                for symbol, result in zip(batch, results):
+                    if isinstance(result, Exception):
+                        logger.error(f"Error getting price for {symbol}: {str(result)}")
+                        # Use cached data or mock fallback
+                        cached_data = self._get_cached_price(symbol)
+                        if cached_data:
+                            price_data[symbol] = cached_data
+                        else:
+                            price_data[symbol] = self._get_mock_price(symbol)
+                    else:
+                        price_data[symbol] = result
+                        
+            except asyncio.TimeoutError:
+                logger.warning(f"Timeout getting prices for batch: {batch}")
+                # Fallback to cached or mock data for timeout batch
+                for symbol in batch:
+                    cached_data = self._get_cached_price(symbol)
+                    if cached_data:
+                        price_data[symbol] = cached_data
+                    else:
+                        price_data[symbol] = self._get_mock_price(symbol)
+            
+            # Rate limiting between batches
+            if i + batch_size < len(symbols):
+                await asyncio.sleep(0.5)  # 500ms between batches
         
         return price_data
 
