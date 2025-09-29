@@ -374,7 +374,7 @@ async def get_portfolio_summary(
         # Calculate totals with current prices
         total_value = 0
         total_cost = 0
-        asset_breakdown = {"stocks": 0, "crypto": 0, "roth_ira": 0}
+        asset_breakdown = {"stock": 0, "crypto": 0, "roth_ira": 0}
         
         for holding in holdings:
             symbol = holding["symbol"]
@@ -390,7 +390,13 @@ async def get_portfolio_summary(
             
             total_value += holding_value
             total_cost += holding_cost
-            asset_breakdown[holding["type"]] += 1
+            
+            # Map asset types correctly
+            asset_type = holding["type"]
+            if asset_type in asset_breakdown:
+                asset_breakdown[asset_type] += 1
+            else:
+                asset_breakdown["stock"] += 1  # Default fallback
         
         total_gain_loss = total_value - total_cost
         total_gain_loss_percent = (total_gain_loss / total_cost) * 100 if total_cost > 0 else 0
