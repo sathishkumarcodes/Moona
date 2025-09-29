@@ -208,6 +208,22 @@ const EditHoldingModal = ({ holding, open, onClose, onHoldingUpdated }) => {
                 onChange={(e) => handleInputChange('sector', e.target.value)}
               />
             </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="platform">Platform/Account</Label>
+              <Select value={formData.platform} onValueChange={(value) => handleInputChange('platform', value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select platform" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availablePlatforms.map((platform) => (
+                    <SelectItem key={platform} value={platform}>
+                      {platform}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {/* Updated Preview */}
