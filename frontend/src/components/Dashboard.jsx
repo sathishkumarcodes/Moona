@@ -509,7 +509,7 @@ const Dashboard = () => {
           </TabsContent>
 
           <TabsContent value="spy-comparison">
-            <SPYComparison comparison={mockSPYComparison} performanceData={mockPerformanceHistory} />
+            <SPYComparison comparison={mockSPYComparison} performanceData={performanceHistory} />
           </TabsContent>
         </Tabs>
       </div>
