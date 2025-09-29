@@ -48,16 +48,18 @@ const Dashboard = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Portfolio Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card>
+          <Card className="bg-white/70 backdrop-blur-sm border-0 shadow-xl hover:shadow-2xl transition-all duration-300">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-gray-600">Total Value</CardTitle>
-              <DollarSign className="h-4 w-4 text-gray-400" />
+              <div className="p-2 bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-lg">
+                <DollarSign className="h-4 w-4 text-white" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-gray-900">
+              <div className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
                 {formatCurrency(mockPortfolio.totalValue)}
               </div>
-              <div className={`text-sm flex items-center mt-1 ${getChangeColor(mockPortfolio.dailyChange)}`}>
+              <div className={`text-sm flex items-center mt-2 ${getChangeColor(mockPortfolio.dailyChange)}`}>
                 {mockPortfolio.dailyChange >= 0 ? (
                   <TrendingUp className="w-4 h-4 mr-1" />
                 ) : (
@@ -68,29 +70,33 @@ const Dashboard = () => {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-white/70 backdrop-blur-sm border-0 shadow-xl hover:shadow-2xl transition-all duration-300">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-gray-600">Total Cost</CardTitle>
-              <PieChartIcon className="h-4 w-4 text-gray-400" />
+              <div className="p-2 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg">
+                <PieChartIcon className="h-4 w-4 text-white" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-gray-900">
+              <div className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
                 {formatCurrency(mockPortfolio.totalCost)}
               </div>
-              <p className="text-sm text-gray-600 mt-1">Initial investment</p>
+              <p className="text-sm text-gray-600 mt-2">Initial investment</p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-white/70 backdrop-blur-sm border-0 shadow-xl hover:shadow-2xl transition-all duration-300">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-gray-600">Total Gain/Loss</CardTitle>
-              <BarChart3 className="h-4 w-4 text-gray-400" />
+              <div className={`p-2 rounded-lg ${mockPortfolio.totalGainLoss >= 0 ? 'bg-gradient-to-r from-emerald-500 to-emerald-600' : 'bg-gradient-to-r from-red-500 to-red-600'}`}>
+                <BarChart3 className="h-4 w-4 text-white" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className={`text-2xl font-bold ${getChangeColor(mockPortfolio.totalGainLoss)}`}>
+              <div className={`text-3xl font-bold ${getChangeColor(mockPortfolio.totalGainLoss)}`}>
                 {formatCurrency(mockPortfolio.totalGainLoss)}
               </div>
-              <Badge variant="outline" className={getChangeBgColor(mockPortfolio.totalGainLoss)}>
+              <Badge variant="outline" className={`mt-2 ${getChangeBgColor(mockPortfolio.totalGainLoss)} border-0 font-semibold`}>
                 <span className={getChangeColor(mockPortfolio.totalGainLoss)}>
                   {formatPercent(mockPortfolio.totalGainLossPercent)}
                 </span>
@@ -98,14 +104,16 @@ const Dashboard = () => {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-white/70 backdrop-blur-sm border-0 shadow-xl hover:shadow-2xl transition-all duration-300">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-gray-600">Assets</CardTitle>
-              <Activity className="h-4 w-4 text-gray-400" />
+              <div className="p-2 bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg">
+                <Activity className="h-4 w-4 text-white" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-gray-900">{mockInvestments.length}</div>
-              <div className="text-sm text-gray-600 mt-1">
+              <div className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">{mockInvestments.length}</div>
+              <div className="text-sm text-gray-600 mt-2">
                 {mockInvestments.filter(inv => inv.type === 'stock').length} stocks, {' '}
                 {mockInvestments.filter(inv => inv.type === 'crypto').length} crypto, {' '}
                 {mockInvestments.filter(inv => inv.type === 'roth_ira').length} roth ira
