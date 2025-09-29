@@ -483,7 +483,12 @@ const Dashboard = () => {
           </TabsContent>
 
           <TabsContent value="investments">
-            <InvestmentList investments={mockInvestments} />
+            <InvestmentList 
+              investments={holdings} 
+              onEdit={setEditingHolding}
+              onDelete={handleHoldingDeleted}
+              isLoading={isLoading}
+            />
           </TabsContent>
 
           <TabsContent value="spy-comparison">
