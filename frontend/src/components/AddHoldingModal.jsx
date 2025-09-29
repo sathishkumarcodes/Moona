@@ -133,10 +133,10 @@ const AddHoldingModal = ({ onHoldingAdded }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.symbol || !formData.name || !formData.type || !formData.shares || !formData.avg_cost) {
+    if (!formData.symbol || !formData.name || !formData.type || !formData.shares || !formData.avg_cost || !formData.platform) {
       toast({
         title: "Missing Information",
-        description: "Please fill in all required fields",
+        description: "Please fill in all required fields including platform",
         variant: "destructive"
       });
       return;
