@@ -157,9 +157,9 @@ const InvestmentList = ({ investments }) => {
         </div>
 
         {filteredInvestments.length === 0 && (
-          <div className="text-center py-8">
-            <p className="text-gray-500">No investments found matching your criteria.</p>
-          </div>
+        <div className="text-center py-8">
+          <p className="text-gray-500">No investments found matching your criteria.</p>
+        </div>
         )}
       </CardContent>
     </Card>
