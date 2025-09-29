@@ -171,9 +171,11 @@ const AddHoldingModal = ({ onHoldingAdded }) => {
         type: '',
         shares: '',
         avg_cost: '',
-        sector: ''
+        sector: '',
+        platform: ''
       });
       setCurrentPrice(null);
+      setAvailablePlatforms([]);
       setOpen(false);
 
       // Notify parent component
