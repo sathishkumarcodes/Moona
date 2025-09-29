@@ -61,7 +61,7 @@ export const AuthProvider = ({ children }) => {
             
             // Redirect to dashboard after successful authentication
             setTimeout(() => {
-              window.location.href = '/dashboard';
+              navigate('/dashboard');
             }, 100);
           } catch (error) {
             console.error('Authentication error:', error);
