@@ -15,14 +15,9 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState({
-    id: 'mock_user_123',
-    email: 'demo@investtracker.com',
-    name: 'Demo User',
-    picture: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face'
-  }); // Mock user for testing
+  const [user, setUser] = useState(null); // No mock user
   const [isLoading, setIsLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(true); // Mock authenticated for testing
+  const [isAuthenticated, setIsAuthenticated] = useState(false); // Start unauthenticated
 
   // Check for existing session on app load
   useEffect(() => {
