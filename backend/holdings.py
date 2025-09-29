@@ -407,7 +407,11 @@ async def get_portfolio_summary(
             "total_gain_loss": total_gain_loss,
             "total_gain_loss_percent": total_gain_loss_percent,
             "asset_count": len(holdings),
-            "asset_breakdown": asset_breakdown,
+            "asset_breakdown": {
+                "stocks": asset_breakdown.get("stock", 0),
+                "crypto": asset_breakdown.get("crypto", 0), 
+                "roth_ira": asset_breakdown.get("roth_ira", 0)
+            },
             "last_updated": datetime.now(timezone.utc).isoformat()
         }
         
