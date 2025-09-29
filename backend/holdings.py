@@ -38,6 +38,7 @@ class HoldingUpdate(BaseModel):
     shares: Optional[float] = Field(None, gt=0)
     avg_cost: Optional[float] = Field(None, gt=0)
     sector: Optional[str] = Field(None, max_length=100)
+    platform: Optional[str] = Field(None, max_length=100)
 
 class HoldingResponse(BaseModel):
     id: str
