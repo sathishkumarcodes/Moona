@@ -4,9 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { TrendingUp, TrendingDown, DollarSign, PieChart as PieChartIcon, BarChart3, Activity, Target, Wallet, Plus, RefreshCw, Download } from 'lucide-react';
-import { 
-  mockMonthlyContributions 
-} from '../mock';
+// All data now comes from backend - no mock imports needed
 import InvestmentList from './InvestmentList';
 import SPYComparison from './SPYComparison';
 import PerformanceChart from './PerformanceChart';
