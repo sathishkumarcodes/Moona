@@ -33,17 +33,7 @@ const Navbar = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center py-4">
           {/* Logo */}
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-gradient-to-r from-emerald-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
-              <TrendingUp className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
-                InvestTracker
-              </h1>
-              <p className="text-xs text-gray-500 -mt-1">Portfolio Management</p>
-            </div>
-          </div>
+          <MoonaLogo size="md" showTagline={true} />
 
           {/* Right Side */}
           <div className="flex items-center space-x-4">
