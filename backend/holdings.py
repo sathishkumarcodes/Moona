@@ -95,6 +95,7 @@ async def create_holding(
             "gain_loss": gain_loss,
             "gain_loss_percent": gain_loss_percent,
             "sector": holding_data.sector,
+            "platform": holding_data.platform,
             "last_updated": datetime.now(timezone.utc),
             "created_at": datetime.now(timezone.utc)
         }
