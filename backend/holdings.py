@@ -53,6 +53,7 @@ class HoldingResponse(BaseModel):
     gain_loss: float
     gain_loss_percent: float
     sector: Optional[str]
+    platform: Optional[str]
     last_updated: datetime
     created_at: datetime
 
