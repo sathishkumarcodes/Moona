@@ -27,7 +27,7 @@ holdings_router = APIRouter(prefix="/holdings", tags=["holdings"])
 class HoldingCreate(BaseModel):
     symbol: str = Field(..., min_length=1, max_length=10)
     name: str = Field(..., min_length=1, max_length=200)
-    type: str = Field(..., regex="^(stock|crypto|roth_ira)$")
+    type: str = Field(..., pattern="^(stock|crypto|roth_ira)$")
     shares: float = Field(..., gt=0)
     avg_cost: float = Field(..., gt=0)
     sector: Optional[str] = Field(None, max_length=100)
