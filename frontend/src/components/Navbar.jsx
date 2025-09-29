@@ -37,38 +37,6 @@ const Navbar = () => {
 
           {/* Right Side */}
           <div className="flex items-center space-x-4">
-            {/* Action Buttons */}
-            <div className="hidden lg:flex items-center space-x-3">
-              <div className="flex items-center space-x-2 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-full">
-                <Activity className="w-4 h-4 text-blue-600" />
-                <span className="text-xs font-medium text-blue-700">
-                  Last updated: {new Date().toLocaleTimeString()}
-                </span>
-              </div>
-              
-              <Button
-                onClick={refreshData}
-                disabled={isRefreshing}
-                size="sm"
-                variant="outline"
-                className="border-slate-200 hover:bg-slate-50"
-              >
-                <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                <span className="hidden sm:inline ml-2">Refresh</span>
-              </Button>
-              
-              <Button
-                onClick={exportToExcel}
-                size="sm"
-                className="bg-emerald-500 hover:bg-emerald-600 text-white"
-              >
-                <Download className="w-4 h-4" />
-                <span className="hidden sm:inline ml-2">Excel</span>
-              </Button>
-              
-              <AddHoldingModal onHoldingAdded={handleHoldingAdded} />
-            </div>
-
             {/* Status Badge */}
             <div className="hidden sm:flex items-center space-x-2">
               <div className="flex items-center space-x-2 px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-full">
