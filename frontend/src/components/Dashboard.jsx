@@ -125,7 +125,8 @@ const Dashboard = () => {
               <div className="text-2xl font-bold text-gray-900">{mockInvestments.length}</div>
               <div className="text-sm text-gray-600 mt-1">
                 {mockInvestments.filter(inv => inv.type === 'stock').length} stocks, {' '}
-                {mockInvestments.filter(inv => inv.type === 'crypto').length} crypto
+                {mockInvestments.filter(inv => inv.type === 'crypto').length} crypto, {' '}
+                {mockInvestments.filter(inv => inv.type === 'roth_ira').length} roth ira
               </div>
             </CardContent>
           </Card>
