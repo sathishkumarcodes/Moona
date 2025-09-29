@@ -35,6 +35,23 @@ const AddHoldingModal = ({ onHoldingAdded }) => {
       ...prev,
       [field]: value
     }));
+    
+    // Load platforms when asset type changes
+    if (field === 'type' && value) {
+      loadPlatforms(value);
+    }
+  };
+
+  const loadPlatforms = async (assetType) => {
+    try {
+      const response = await axios.get(`${API}/holdings/platforms/${assetType}`, {
+        withCredentials: true
+      });
+      setAvailablePlatforms(response.data.platforms || []);
+    } catch (error) {
+      console.error('Error loading platforms:', error);
+      setAvailablePlatforms([]);
+    }
   };
 
   const searchSymbol = async () => {
