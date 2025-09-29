@@ -7,7 +7,7 @@ import AnimatedMoon from './AnimatedMoon';
 
 const LoginPage = ({ onLogin }) => {
   const handleGoogleLogin = () => {
-    const redirectUrl = encodeURIComponent(window.location.origin + '/dashboard');
+    const redirectUrl = encodeURIComponent(window.location.origin + '/login');
     window.location.href = `https://auth.emergentagent.com/?redirect=${redirectUrl}`;
   };
 
