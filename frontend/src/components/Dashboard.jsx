@@ -247,7 +247,7 @@ const Dashboard = () => {
           <div className="mb-4">
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-r from-blue-400/20 via-purple-400/20 to-pink-400/20 rounded-3xl blur-2xl"></div>
-              <div className="relative bg-white/90 backdrop-blur-2xl rounded-3xl p-8 shadow-2xl border border-white/50">
+              <div className="relative bg-white/90 backdrop-blur-2xl rounded-3xl p-4 shadow-2xl border border-white/50">
                 <div className="animate-pulse">
                   <div className="flex items-center space-x-4 mb-8">
                     <div className="w-12 h-12 bg-gradient-to-r from-slate-200 to-slate-300 rounded-2xl"></div>
