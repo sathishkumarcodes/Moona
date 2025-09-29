@@ -255,22 +255,37 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Portfolio Summary KPI Table */}
+        {/* Enhanced KPI Table with Premium Design */}
         {isLoading ? (
           <div className="mb-8">
-            <div className="bg-gradient-to-r from-slate-50 to-blue-50 rounded-2xl p-8 shadow-lg border border-slate-200/50">
-              <div className="animate-pulse">
-                <div className="h-8 bg-gradient-to-r from-slate-200 to-slate-300 rounded-lg mb-6"></div>
-                <div className="space-y-4">
-                  {[...Array(4)].map((_, i) => (
-                    <div key={i} className="grid grid-cols-5 gap-6">
-                      <div className="h-5 bg-slate-200 rounded-md"></div>
-                      <div className="h-5 bg-slate-200 rounded-md"></div>
-                      <div className="h-5 bg-slate-200 rounded-md"></div>
-                      <div className="h-5 bg-slate-200 rounded-md"></div>
-                      <div className="h-5 bg-slate-200 rounded-md"></div>
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-400/20 via-purple-400/20 to-pink-400/20 rounded-3xl blur-2xl"></div>
+              <div className="relative bg-white/90 backdrop-blur-2xl rounded-3xl p-8 shadow-2xl border border-white/50">
+                <div className="animate-pulse">
+                  <div className="flex items-center space-x-4 mb-8">
+                    <div className="w-12 h-12 bg-gradient-to-r from-slate-200 to-slate-300 rounded-2xl"></div>
+                    <div className="space-y-2">
+                      <div className="h-6 w-48 bg-gradient-to-r from-slate-200 to-slate-300 rounded-lg"></div>
+                      <div className="h-4 w-32 bg-slate-200 rounded-md"></div>
                     </div>
-                  ))}
+                  </div>
+                  <div className="space-y-6">
+                    {[...Array(4)].map((_, i) => (
+                      <div key={i} className="grid grid-cols-5 gap-8 items-center">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 bg-slate-200 rounded-xl"></div>
+                          <div className="space-y-2">
+                            <div className="h-4 w-16 bg-slate-200 rounded-md"></div>
+                            <div className="h-3 w-12 bg-slate-150 rounded-sm"></div>
+                          </div>
+                        </div>
+                        <div className="h-5 bg-slate-200 rounded-md"></div>
+                        <div className="h-5 bg-slate-200 rounded-md"></div>
+                        <div className="h-5 bg-slate-200 rounded-md"></div>
+                        <div className="h-6 w-20 bg-slate-200 rounded-full ml-auto"></div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
