@@ -172,15 +172,26 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-indigo-900 relative overflow-hidden">
-      {/* Animated Background Elements */}
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-950 relative overflow-hidden">
+      {/* Celestial Animated Background */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-20 left-10 w-32 h-32 bg-purple-500/20 rounded-full blur-xl animate-pulse"></div>
-        <div className="absolute top-40 right-20 w-24 h-24 bg-pink-500/20 rounded-full blur-xl animate-bounce"></div>
-        <div className="absolute bottom-32 left-1/4 w-40 h-40 bg-cyan-500/20 rounded-full blur-2xl animate-pulse"></div>
-        <div className="absolute top-1/3 right-1/3 text-6xl opacity-10 animate-float">🌙</div>
-        <div className="absolute bottom-1/4 left-1/5 text-4xl opacity-10 animate-float delay-1000">⭐</div>
-        <div className="absolute top-1/4 left-2/3 text-5xl opacity-10 animate-float delay-2000">✨</div>
+        {/* Cosmic Orbs */}
+        <div className="absolute top-20 left-10 w-32 h-32 bg-gradient-to-br from-blue-400/30 to-cyan-400/30 rounded-full blur-xl animate-pulse"></div>
+        <div className="absolute top-40 right-20 w-24 h-24 bg-gradient-to-br from-teal-400/20 to-blue-500/20 rounded-full blur-xl animate-bounce"></div>
+        <div className="absolute bottom-32 left-1/4 w-40 h-40 bg-gradient-to-br from-indigo-400/20 to-blue-600/20 rounded-full blur-2xl animate-pulse"></div>
+        
+        {/* Celestial Elements */}
+        <div className="absolute top-1/3 right-1/3 text-7xl opacity-20 animate-float filter drop-shadow-lg">🌙</div>
+        <div className="absolute bottom-1/4 left-1/5 text-4xl opacity-15 animate-float delay-1000">⭐</div>
+        <div className="absolute top-1/4 left-2/3 text-5xl opacity-15 animate-float delay-2000">✨</div>
+        <div className="absolute top-1/2 left-1/6 text-3xl opacity-10 animate-float delay-3000">🌟</div>
+        <div className="absolute bottom-1/3 right-1/4 text-6xl opacity-15 animate-float delay-4000">💫</div>
+        
+        {/* Twinkling Stars */}
+        <div className="absolute top-10 left-1/3 w-2 h-2 bg-cyan-300 rounded-full animate-ping"></div>
+        <div className="absolute top-32 right-1/4 w-1 h-1 bg-blue-300 rounded-full animate-pulse delay-500"></div>
+        <div className="absolute bottom-20 left-1/2 w-2 h-2 bg-teal-300 rounded-full animate-ping delay-1000"></div>
+        <div className="absolute top-2/3 right-1/5 w-1 h-1 bg-indigo-300 rounded-full animate-pulse delay-1500"></div>
       </div>
       
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
