@@ -300,13 +300,13 @@ class PriceService:
         try:
             # If type is specified, use it
             if asset_type == 'crypto':
-                return self.get_crypto_price(symbol)
+                return await self.get_crypto_price(symbol)
             elif asset_type == 'stock':
                 return await self.get_stock_price(symbol)
             
             # Auto-detect based on symbol
             if symbol.upper() in self.crypto_symbol_map:
-                return self.get_crypto_price(symbol)
+                return await self.get_crypto_price(symbol)
             else:
                 return await self.get_stock_price(symbol)
                 
