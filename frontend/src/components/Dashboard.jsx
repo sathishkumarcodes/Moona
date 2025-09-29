@@ -187,25 +187,6 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-blue-900 relative overflow-hidden">
-      {/* Header with Moona Branding */}
-      <div className="relative z-20 bg-white/10 backdrop-blur-md border-b border-white/20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <MoonaLogo size="md" showTagline={true} className="text-white" />
-            <div className="flex items-center space-x-4 text-white">
-              <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
-                <span className="text-sm font-medium">Live Data</span>
-              </div>
-              <div className="flex items-center space-x-2 text-sm">
-                <Activity className="w-4 h-4" />
-                <span>Last updated: {new Date().toLocaleTimeString()}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Animated Moon Background */}
       <AnimatedMoon className="fixed top-20 right-20 pointer-events-none opacity-60" />
       
