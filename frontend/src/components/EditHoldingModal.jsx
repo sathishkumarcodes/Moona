@@ -99,7 +99,8 @@ const EditHoldingModal = ({ holding, open, onClose, onHoldingUpdated }) => {
         name: formData.name,
         shares: parseFloat(formData.shares),
         avg_cost: parseFloat(formData.avg_cost),
-        sector: formData.sector || null
+        sector: formData.sector || null,
+        platform: formData.platform || null
       };
 
       const response = await axios.put(`${API}/holdings/${holding.id}`, payload, {
