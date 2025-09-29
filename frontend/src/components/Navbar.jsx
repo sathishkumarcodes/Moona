@@ -3,10 +3,9 @@ import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from './ui/dropdown-menu';
-import { TrendingUp, Activity, LogOut, User, Settings, Sparkles, RefreshCw, Download } from 'lucide-react';
+import { TrendingUp, Activity, LogOut, User, Settings, Sparkles } from 'lucide-react';
 import { useAuth } from './AuthProvider';
 import MoonaLogo from './MoonaLogo';
-import AddHoldingModal from './AddHoldingModal';
 
 const Navbar = ({ refreshData, isRefreshing, exportToExcel, handleHoldingAdded }) => {
   const { user, logout } = useAuth();
