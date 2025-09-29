@@ -107,6 +107,55 @@ const Dashboard = () => {
     loadDashboardData();
   };
 
+  const exportToExcel = async () => {
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/export/holdings/excel`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Export failed');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      
+      // Extract filename from response headers or use default
+      const contentDisposition = response.headers.get('content-disposition');
+      let filename = 'portfolio_holdings.xlsx';
+      if (contentDisposition) {
+        const matches = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/.exec(contentDisposition);
+        if (matches != null && matches[1]) {
+          filename = matches[1].replace(/['"]/g, '');
+        }
+      }
+      
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      toast({
+        title: "Export Successful",
+        description: "Portfolio exported to Excel file",
+      });
+
+    } catch (error) {
+      toast({
+        title: "Export Failed",
+        description: "Failed to export portfolio. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
   // Calculate derived data with safe defaults
   const allocation = holdingsService.calculateAllocation(holdings || []);
   const performanceHistory = holdingsService.generatePerformanceHistory(holdings || [], portfolioSummary || {});
