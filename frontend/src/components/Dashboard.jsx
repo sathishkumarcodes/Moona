@@ -5,7 +5,6 @@ import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { TrendingUp, TrendingDown, DollarSign, PieChart as PieChartIcon, BarChart3, Activity, Target, Wallet, Plus, RefreshCw, Download } from 'lucide-react';
 import { 
-  mockSPYComparison, 
   mockMonthlyContributions 
 } from '../mock';
 import InvestmentList from './InvestmentList';
