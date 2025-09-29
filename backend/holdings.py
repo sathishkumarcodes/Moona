@@ -350,6 +350,70 @@ async def search_symbol(
         logger.error(f"Error searching symbol {symbol}: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to search symbol")
 
+@holdings_router.get("/platforms/{asset_type}")
+async def get_platforms_for_asset_type(
+    asset_type: str,
+    current_user: UserData = Depends(get_current_user_dependency)
+):
+    """Get available platforms for a specific asset type"""
+    try:
+        platforms = {
+            "stock": [
+                "Robinhood",
+                "E*TRADE",
+                "TD Ameritrade", 
+                "Charles Schwab",
+                "Fidelity",
+                "Interactive Brokers",
+                "Webull",
+                "M1 Finance",
+                "Vanguard",
+                "Merrill Lynch",
+                "Ally Invest",
+                "SoFi Invest",
+                "Public",
+                "Cash App Investing",
+                "Other"
+            ],
+            "crypto": [
+                "Coinbase",
+                "Coinbase Pro",
+                "Binance US",
+                "Kraken",
+                "Gemini",
+                "KuCoin",
+                "Crypto.com",
+                "MetaMask",
+                "Hardware Wallet (Ledger)",
+                "Hardware Wallet (Trezor)",
+                "Trust Wallet",
+                "Exodus",
+                "Atomic Wallet",
+                "Cold Storage",
+                "Other"
+            ],
+            "roth_ira": [
+                "Fidelity IRA",
+                "Vanguard IRA",
+                "Charles Schwab IRA",
+                "TD Ameritrade IRA",
+                "E*TRADE IRA",
+                "Merrill Lynch IRA",
+                "Interactive Brokers IRA",
+                "Ally Invest IRA",
+                "Wealthfront IRA",
+                "Betterment IRA",
+                "M1 Finance IRA",
+                "Other"
+            ]
+        }
+        
+        return {"platforms": platforms.get(asset_type, [])}
+        
+    except Exception as e:
+        logger.error(f"Error getting platforms for {asset_type}: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get platforms")
+
 @holdings_router.get("/portfolio/summary")
 async def get_portfolio_summary(
     current_user: UserData = Depends(get_current_user_dependency)
