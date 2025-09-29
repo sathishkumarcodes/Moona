@@ -18,6 +18,8 @@ import AnimatedMoon from './AnimatedMoon';
 import holdingsService from '../services/holdingsService';
 import { useToast } from '../hooks/use-toast';
 
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+
 const Dashboard = () => {
   const [selectedTab, setSelectedTab] = useState('overview');
   const [holdings, setHoldings] = useState([]);
