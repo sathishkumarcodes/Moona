@@ -72,9 +72,10 @@ const InvestmentList = ({ investments }) => {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="all">All Types</SelectItem>
                 <SelectItem value="stock">Stocks</SelectItem>
                 <SelectItem value="crypto">Crypto</SelectItem>
+                <SelectItem value="roth_ira">Roth IRA</SelectItem>
               </SelectContent>
             </Select>
             <Select value={sortBy} onValueChange={setSortBy}>
