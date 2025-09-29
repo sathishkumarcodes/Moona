@@ -279,36 +279,8 @@ const Dashboard = () => {
           </div>
         ) : (
           <div className="mb-4">
-            {/* Header Section */}
-            <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 rounded-t-2xl p-4 text-white">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className="p-3 bg-gradient-to-r from-emerald-400 to-blue-500 rounded-xl">
-                    <BarChart3 className="w-7 h-7 text-white" />
-                  </div>
-                  <div>
-                    <h2 className="text-2xl font-bold bg-gradient-to-r from-white to-slate-200 bg-clip-text text-transparent">
-                      Portfolio Performance
-                    </h2>
-                    <p className="text-slate-300 text-sm">Real-time investment analytics</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-3xl font-bold text-white">
-                    {formatCurrency(portfolioSummary?.total_value || 0)}
-                  </div>
-                  <div className={`text-lg font-semibold ${(portfolioSummary?.total_gain_loss || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                    {(portfolioSummary?.total_gain_loss || 0) >= 0 ? '+' : ''}
-                    {formatCurrency(portfolioSummary?.total_gain_loss || 0)} 
-                    ({(portfolioSummary?.total_gain_loss_percent || 0) >= 0 ? '+' : ''}
-                    {(portfolioSummary?.total_gain_loss_percent || 0).toFixed(2)}%)
-                  </div>
-                </div>
-              </div>
-            </div>
-
             {/* KPI Table */}
-            <div className="bg-white rounded-b-2xl shadow-2xl border border-slate-200/50 overflow-hidden">
+            <div className="bg-white rounded-2xl shadow-2xl border border-slate-200/50 overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
