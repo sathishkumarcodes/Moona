@@ -492,7 +492,7 @@ const Dashboard = () => {
 
           <TabsContent value="investments">
             <InvestmentList 
-              investments={holdings} 
+              investments={holdings || []} 
               onEdit={setEditingHolding}
               onDelete={handleHoldingDeleted}
               isLoading={isLoading}
