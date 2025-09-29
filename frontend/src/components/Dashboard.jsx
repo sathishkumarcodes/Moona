@@ -244,11 +244,9 @@ const Dashboard = () => {
                     showTagline={true}
                     onClick={() => {
                       toast({
-                        title: "✨ Moona Magic",
-                        description: "Refreshing your portfolio with lunar power!",
-                        duration: 3000
+                        title: "Portfolio Refreshed",
+                        description: "Updated with latest market data",
                       });
-                      // Add a little celebration and refresh data
                       refreshData();
                     }}
                   />
