@@ -16,6 +16,8 @@ const InvestmentList = ({ investments, onEdit, onDelete, isLoading }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [sortBy, setSortBy] = useState('value');
+  const [deletingId, setDeletingId] = useState(null);
+  const { toast } = useToast();
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-US', {
