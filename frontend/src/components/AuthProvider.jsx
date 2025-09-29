@@ -19,10 +19,10 @@ export const AuthProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false); // Start unauthenticated
 
-  // Check for existing session on app load
-  useEffect(() => {
-    checkExistingSession();
-  }, []);
+  // Check for existing session on app load (only if no OAuth callback)
+  // useEffect(() => {
+  //   checkExistingSession();
+  // }, []);
 
   // Handle session ID from URL fragment after OAuth redirect
   useEffect(() => {
