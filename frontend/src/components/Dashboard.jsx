@@ -187,20 +187,38 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-blue-900 relative overflow-hidden">
+      {/* Header with Moona Branding */}
+      <div className="relative z-20 bg-white/10 backdrop-blur-md border-b border-white/20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-4">
+            <MoonaLogo size="md" showTagline={true} className="text-white" />
+            <div className="flex items-center space-x-4 text-white">
+              <div className="flex items-center space-x-2">
+                <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+                <span className="text-sm font-medium">Live Data</span>
+              </div>
+              <div className="flex items-center space-x-2 text-sm">
+                <Activity className="w-4 h-4" />
+                <span>Last updated: {new Date().toLocaleTimeString()}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Animated Moon Background */}
+      <AnimatedMoon className="fixed top-20 right-20 pointer-events-none opacity-60" />
+      
       {/* Subtle Celestial Background */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         {/* Soft Cosmic Glow */}
-        <div className="absolute top-20 left-10 w-32 h-32 bg-blue-500/10 rounded-full blur-xl animate-pulse"></div>
+        <div className="absolute top-32 left-10 w-32 h-32 bg-blue-500/10 rounded-full blur-xl animate-pulse"></div>
         <div className="absolute bottom-32 right-20 w-40 h-40 bg-blue-400/8 rounded-full blur-2xl animate-pulse delay-1000"></div>
         
-        {/* Minimal Celestial Elements */}
-        <div className="absolute top-1/4 right-1/4 text-6xl opacity-10 animate-float">🌙</div>
-        <div className="absolute bottom-1/3 left-1/5 text-3xl opacity-8 animate-float delay-2000">⭐</div>
-        
         {/* Subtle Twinkling Stars */}
-        <div className="absolute top-16 left-1/3 w-1 h-1 bg-blue-300/60 rounded-full animate-pulse"></div>
-        <div className="absolute top-40 right-1/3 w-1 h-1 bg-slate-300/40 rounded-full animate-pulse delay-1000"></div>
-        <div className="absolute bottom-24 left-2/3 w-1 h-1 bg-blue-200/50 rounded-full animate-pulse delay-2000"></div>
+        <div className="absolute top-24 left-1/3 w-1 h-1 bg-blue-300/60 rounded-full animate-pulse"></div>
+        <div className="absolute top-48 right-1/3 w-1 h-1 bg-slate-300/40 rounded-full animate-pulse delay-1000"></div>
+        <div className="absolute bottom-32 left-2/3 w-1 h-1 bg-blue-200/50 rounded-full animate-pulse delay-2000"></div>
       </div>
       
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
