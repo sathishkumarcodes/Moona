@@ -5,6 +5,7 @@ from datetime import datetime
 import logging
 from typing import Dict, Optional
 import os
+from company_data import get_company_name, get_sector
 
 logger = logging.getLogger(__name__)
 
