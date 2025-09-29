@@ -11,6 +11,7 @@ import uuid
 from datetime import datetime
 from auth import auth_router
 from holdings import holdings_router
+from excel_export import export_router
 
 
 ROOT_DIR = Path(__file__).parent
