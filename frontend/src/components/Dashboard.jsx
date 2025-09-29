@@ -400,7 +400,7 @@ const Dashboard = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <PieChart data={mockAllocation} size={250} />
+                  <PieChart data={allocation.assetAllocation} size={250} />
                 </CardContent>
               </Card>
 
@@ -412,7 +412,7 @@ const Dashboard = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <PieChart data={mockSectorAllocation} size={250} />
+                  <PieChart data={allocation.sectorAllocation} size={250} />
                 </CardContent>
               </Card>
             </div>
