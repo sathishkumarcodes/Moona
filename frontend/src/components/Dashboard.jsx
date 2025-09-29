@@ -216,7 +216,7 @@ const Dashboard = () => {
           <div className="absolute inset-0 bg-gradient-to-r from-blue-400/10 via-purple-400/10 to-pink-400/10 rounded-2xl blur-xl"></div>
           <div className="relative bg-white/80 backdrop-blur-xl border border-white/30 rounded-2xl p-4 shadow-2xl">
             <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center space-y-2 lg:space-y-0">
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {/* Portfolio Header */}
                 <div>
                   <h2 className="text-2xl font-bold text-slate-800">Portfolio Overview</h2>
