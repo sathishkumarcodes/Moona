@@ -275,14 +275,14 @@ const Dashboard = () => {
                             </div>
                           </div>
                           <div className="text-right">
-                            <div className="font-medium text-sm">{formatCurrency(investment.totalValue)}</div>
-                            <div className={`text-xs flex items-center ${getChangeColor(investment.gainLoss)}`}>
-                              {investment.gainLoss >= 0 ? (
+                            <div className="font-medium text-sm">{formatCurrency(investment.total_value)}</div>
+                            <div className={`text-xs flex items-center ${getChangeColor(investment.gain_loss)}`}>
+                              {investment.gain_loss >= 0 ? (
                                 <TrendingUp className="w-3 h-3 mr-1" />
                               ) : (
                                 <TrendingDown className="w-3 h-3 mr-1" />
                               )}
-                              {formatPercent(investment.gainLossPercent)}
+                              {formatPercent(investment.gain_loss_percent)}
                             </div>
                           </div>
                         </div>
