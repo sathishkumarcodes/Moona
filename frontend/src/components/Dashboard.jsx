@@ -218,20 +218,18 @@ const Dashboard = () => {
             <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center space-y-4 lg:space-y-0">
               <div className="space-y-3">
                 <div className="flex items-center space-x-4">
-                  <div className="relative group">
-                    <div className="absolute -inset-2 bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 rounded-2xl blur-lg opacity-70 group-hover:opacity-100 animate-pulse"></div>
-                    <div className="relative p-4 bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 rounded-2xl shadow-2xl transform group-hover:scale-105 transition-all duration-300">
-                      <div className="text-3xl">🌙</div>
-                    </div>
-                  </div>
-                  <div>
-                    <h1 className="text-4xl font-black bg-gradient-to-r from-purple-600 via-pink-500 to-cyan-400 bg-clip-text text-transparent drop-shadow-lg">
-                      Moona
-                    </h1>
-                    <p className="text-lg font-bold bg-gradient-to-r from-slate-700 to-purple-600 bg-clip-text text-transparent">
-                      where your portfolio shines brighter ✨
-                    </p>
-                  </div>
+                  <MoonaLogo 
+                    size="lg" 
+                    showTagline={true}
+                    onClick={() => {
+                      toast({
+                        title: "✨ Moona Magic",
+                        description: "Portfolio updated! Watch those gains shine!",
+                      });
+                      // Add a little sparkle effect
+                      refreshData();
+                    }}
+                  />
                 </div>
                 
                 {/* Live Metrics Strip */}
