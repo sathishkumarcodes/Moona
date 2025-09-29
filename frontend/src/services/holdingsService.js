@@ -162,14 +162,14 @@ class HoldingsService {
     const today = new Date();
     const history = [];
     
+    // Use safe defaults if no data
+    const baseValue = portfolioSummary?.total_cost || 100000;
+    const currentValue = portfolioSummary?.total_value || baseValue;
+    const growth = currentValue > 0 ? (currentValue - baseValue) / baseValue : 0;
+    
     for (let i = 8; i >= 0; i--) {
       const date = new Date(today);
       date.setMonth(date.getMonth() - i);
-      
-      // Simulate historical values based on current data
-      const baseValue = portfolioSummary.total_cost || 100000;
-      const currentValue = portfolioSummary.total_value || baseValue;
-      const growth = (currentValue - baseValue) / baseValue;
       
       // Simulate gradual growth over time
       const progressFactor = (8 - i) / 8;
