@@ -106,6 +106,20 @@ const Dashboard = () => {
     loadDashboardData();
   };
 
+  const handleAssetTypeClick = (assetType) => {
+    // Navigate to Holdings tab and filter by asset type
+    setSelectedTab('investments');
+    
+    // Small delay to ensure tab switch happens first
+    setTimeout(() => {
+      // Trigger filter in InvestmentList component via a custom event
+      const filterEvent = new CustomEvent('filterByAssetType', {
+        detail: { assetType: assetType.toLowerCase().replace(' ', '_') }
+      });
+      window.dispatchEvent(filterEvent);
+    }, 100);
+  };
+
   const exportToExcel = async () => {
     try {
       const response = await fetch(`${BACKEND_URL}/api/export/holdings/excel`, {
