@@ -244,7 +244,7 @@ const Dashboard = () => {
 
         {/* Enhanced KPI Table with Premium Design */}
         {isLoading ? (
-          <div className="mb-8">
+          <div className="mb-4">
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-r from-blue-400/20 via-purple-400/20 to-pink-400/20 rounded-3xl blur-2xl"></div>
               <div className="relative bg-white/90 backdrop-blur-2xl rounded-3xl p-8 shadow-2xl border border-white/50">
