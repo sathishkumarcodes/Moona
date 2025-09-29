@@ -213,13 +213,25 @@ export const mockSectorAllocation = [
 ];
 
 export const mockPerformanceHistory = [
-  { date: '2024-01-01', portfolio: 100000, spy: 100000 },
-  { date: '2024-02-01', portfolio: 102500, spy: 101200 },
-  { date: '2024-03-01', portfolio: 108200, spy: 103800 },
-  { date: '2024-04-01', portfolio: 112800, spy: 106500 },
-  { date: '2024-05-01', portfolio: 118500, spy: 109200 },
-  { date: '2024-06-01', portfolio: 115200, spy: 107800 },
-  { date: '2024-07-01', portfolio: 121800, spy: 112300 },
-  { date: '2024-08-01', portfolio: 119600, spy: 110500 },
-  { date: '2024-09-01', portfolio: 125480, spy: 118500 }
+  { date: '2024-01-01', portfolio: 150000, spy: 150000, stocks: 50000, crypto: 60000, roth_ira: 40000 },
+  { date: '2024-02-01', portfolio: 153750, spy: 151800, stocks: 51250, crypto: 62500, roth_ira: 40000 },
+  { date: '2024-03-01', portfolio: 162300, spy: 155700, stocks: 54100, crypto: 67200, roth_ira: 41000 },
+  { date: '2024-04-01', portfolio: 169200, spy: 159750, stocks: 56400, crypto: 71800, roth_ira: 41000 },
+  { date: '2024-05-01', portfolio: 177750, spy: 163800, stocks: 59250, crypto: 76500, roth_ira: 42000 },
+  { date: '2024-06-01', portfolio: 172800, spy: 161700, stocks: 57600, crypto: 73200, roth_ira: 42000 },
+  { date: '2024-07-01', portfolio: 182700, spy: 168450, stocks: 60900, crypto: 79800, roth_ira: 42000 },
+  { date: '2024-08-01', portfolio: 179400, spy: 165750, stocks: 59800, crypto: 77600, roth_ira: 42000 },
+  { date: '2024-09-01', portfolio: 185680, spy: 177750, stocks: 61229, crypto: 77180, roth_ira: 47271 }
+];
+
+export const mockMonthlyContributions = [
+  { month: 'Jan 2024', amount: 6000 },
+  { month: 'Feb 2024', amount: 6000 },
+  { month: 'Mar 2024', amount: 6500 },
+  { month: 'Apr 2024', amount: 7000 },
+  { month: 'May 2024', amount: 6000 },
+  { month: 'Jun 2024', amount: 5500 },
+  { month: 'Jul 2024', amount: 6500 },
+  { month: 'Aug 2024', amount: 6000 },
+  { month: 'Sep 2024', amount: 7200 }
 ];
