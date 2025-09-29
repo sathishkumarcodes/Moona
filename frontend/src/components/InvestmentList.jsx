@@ -119,8 +119,21 @@ const InvestmentList = ({ investments, onEdit, onDelete, isLoading }) => {
                 <SelectItem value="roth_ira">Roth IRA</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={sortBy} onValueChange={setSortBy}>
+            <Select value={filterPlatform} onValueChange={setFilterPlatform}>
               <SelectTrigger className="w-full sm:w-40">
+                <SelectValue placeholder="Platform" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Platforms</SelectItem>
+                {uniquePlatforms.map((platform) => (
+                  <SelectItem key={platform} value={platform}>
+                    {platform}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="w-full sm:w-32">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
