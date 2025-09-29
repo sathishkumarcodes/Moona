@@ -48,6 +48,69 @@ const Dashboard = () => {
     return value >= 0 ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200';
   };
 
+  // Load data on component mount
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
+
+  const loadDashboardData = async () => {
+    try {
+      setIsLoading(true);
+      const [holdingsData, summaryData] = await Promise.all([
+        holdingsService.getHoldings(),
+        holdingsService.getPortfolioSummary()
+      ]);
+      
+      setHoldings(holdingsData);
+      setPortfolioSummary(summaryData);
+    } catch (error) {
+      console.error('Error loading dashboard data:', error);
+      toast({
+        title: "Error Loading Data",
+        description: "Failed to load portfolio data. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const refreshData = async () => {
+    try {
+      setIsRefreshing(true);
+      await loadDashboardData();
+      toast({
+        title: "Data Refreshed",
+        description: "Portfolio data has been updated with latest prices",
+      });
+    } catch (error) {
+      toast({
+        title: "Refresh Failed", 
+        description: "Could not refresh data. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  const handleHoldingAdded = () => {
+    loadDashboardData();
+  };
+
+  const handleHoldingUpdated = () => {
+    loadDashboardData();
+    setEditingHolding(null);
+  };
+
+  const handleHoldingDeleted = () => {
+    loadDashboardData();
+  };
+
+  // Calculate derived data
+  const allocation = holdingsService.calculateAllocation(holdings);
+  const performanceHistory = holdingsService.generatePerformanceHistory(holdings, portfolioSummary);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
