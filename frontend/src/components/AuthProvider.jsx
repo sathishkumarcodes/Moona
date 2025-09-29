@@ -57,7 +57,12 @@ export const AuthProvider = ({ children }) => {
             });
             setIsAuthenticated(true);
             
-            // The PublicRoute will automatically redirect to dashboard when isAuthenticated becomes true
+            // Force redirect to dashboard after successful authentication
+            setTimeout(() => {
+              if (window.location.pathname !== '/dashboard') {
+                window.location.replace('/dashboard');
+              }
+            }, 500);
           } catch (error) {
             console.error('Authentication error:', error);
           }
