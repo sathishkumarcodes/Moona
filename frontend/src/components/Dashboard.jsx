@@ -214,7 +214,7 @@ const Dashboard = () => {
           onHoldingUpdated={handleHoldingUpdated}
         />
         {/* Simple Action Bar */}
-        <div className="flex justify-end items-center gap-3 mb-6">
+        <div className="flex justify-end items-center gap-3 mb-3">
           <div className="flex items-center space-x-2 px-3 py-1.5 bg-white/80 backdrop-blur-sm border border-slate-200 rounded-lg text-sm">
             <Activity className="w-4 h-4 text-blue-600" />
             <span className="text-slate-700">
