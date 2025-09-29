@@ -65,9 +65,15 @@ export const AuthProvider = ({ children }) => {
             }, 500);
           } catch (error) {
             console.error('Authentication error:', error);
+          } finally {
+            setIsLoading(false);
           }
+        } else {
+          setIsLoading(false);
         }
-        setIsLoading(false);
+      } else {
+        // No session_id in URL, continue with normal loading check
+        checkExistingSession();
       }
     };
 
