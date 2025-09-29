@@ -377,7 +377,7 @@ const Dashboard = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <AssetBreakdownChart data={mockPerformanceHistory} />
+                  <AssetBreakdownChart data={performanceHistory} />
                 </CardContent>
               </Card>
 
