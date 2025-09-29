@@ -310,15 +310,15 @@ const Dashboard = () => {
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span>Stocks</span>
-                      <span className="font-medium">{mockInvestments.filter(i => i.type === 'stock').length}</span>
+                      <span className="font-medium">{portfolioSummary?.asset_breakdown?.stocks || 0}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span>Crypto</span>
-                      <span className="font-medium">{mockInvestments.filter(i => i.type === 'crypto').length}</span>
+                      <span className="font-medium">{portfolioSummary?.asset_breakdown?.crypto || 0}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span>Roth IRA</span>
-                      <span className="font-medium">{mockInvestments.filter(i => i.type === 'roth_ira').length}</span>
+                      <span className="font-medium">{portfolioSummary?.asset_breakdown?.roth_ira || 0}</span>
                     </div>
                   </div>
                 </CardContent>
