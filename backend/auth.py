@@ -34,6 +34,58 @@ class UserData(BaseModel):
     name: str
     picture: str
 
+@auth_router.get("/oauth-session/{session_id}")
+async def get_oauth_session(session_id: str, response: Response):
+    """Proxy endpoint to get OAuth session data and avoid CORS issues"""
+    try:
+        import httpx
+        async with httpx.AsyncClient() as client:
+            # Call the external OAuth service
+            oauth_response = await client.get(
+                "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data",
+                headers={"X-Session-ID": session_id},
+                timeout=10.0
+            )
+            
+            if oauth_response.status_code == 200:
+                user_data = oauth_response.json()
+                
+                # Store session in our database
+                session_data = {
+                    "session_id": session_id,
+                    "user_id": user_data.get("id"),
+                    "email": user_data.get("email"),
+                    "name": user_data.get("name"),
+                    "picture": user_data.get("picture"),
+                    "created_at": datetime.now()
+                }
+                
+                # Store in MongoDB
+                await db.user_sessions.insert_one(session_data)
+                
+                # Set session cookie
+                response.set_cookie(
+                    key="session_id", 
+                    value=session_id,
+                    httponly=True,
+                    secure=True,
+                    samesite="none",
+                    max_age=7 * 24 * 60 * 60  # 7 days
+                )
+                
+                return {
+                    "id": user_data.get("id"),
+                    "email": user_data.get("email"),
+                    "name": user_data.get("name"),
+                    "picture": user_data.get("picture")
+                }
+            else:
+                raise HTTPException(status_code=401, detail="Invalid session ID")
+                
+    except Exception as e:
+        logger.error(f"OAuth session error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Authentication failed")
+
 @auth_router.post("/session")
 async def store_session(user_data: UserSessionData, response: Response):
     """Store user session data and set httpOnly cookie"""
