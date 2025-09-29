@@ -51,6 +51,27 @@ const Dashboard = () => {
     loadDashboardData();
   }, []);
 
+  // Add keyboard shortcut for Moona magic
+  useEffect(() => {
+    const handleKeyPress = (event) => {
+      if (event.key.toLowerCase() === 'm' && !event.ctrlKey && !event.altKey) {
+        const activeElement = document.activeElement;
+        // Only trigger if not typing in an input field
+        if (activeElement && (activeElement.tagName !== 'INPUT' && activeElement.tagName !== 'TEXTAREA')) {
+          toast({
+            title: "🌙 Moona Shortcut",
+            description: "Press 'M' anytime for lunar magic!",
+            duration: 2000
+          });
+          refreshData();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, []);
+
   const loadDashboardData = async () => {
     try {
       setIsLoading(true);
