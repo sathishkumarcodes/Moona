@@ -78,11 +78,13 @@ const AddHoldingModal = ({ onHoldingAdded }) => {
       const symbol = formData.symbol.toUpperCase();
       const cryptoSymbols = ['BTC', 'ETH', 'SOL', 'ADA', 'DOT', 'MATIC', 'LINK', 'UNI'];
       
+      let detectedType = 'stock';
       if (cryptoSymbols.includes(symbol)) {
-        handleInputChange('type', 'crypto');
-      } else {
-        handleInputChange('type', 'stock');
+        detectedType = 'crypto';
       }
+      
+      handleInputChange('type', detectedType);
+      await loadPlatforms(detectedType);
 
       // Auto-populate name and sector if returned
       if (response.data.name) {
