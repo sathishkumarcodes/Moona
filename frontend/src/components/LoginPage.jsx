@@ -2,6 +2,8 @@ import React from 'react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { TrendingUp, Shield, BarChart3, Wallet, Chrome } from 'lucide-react';
+import MoonaLogo from './MoonaLogo';
+import AnimatedMoon from './AnimatedMoon';
 
 const LoginPage = ({ onLogin }) => {
   const handleGoogleLogin = () => {
@@ -10,7 +12,10 @@ const LoginPage = ({ onLogin }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-blue-900 relative overflow-hidden">
+      {/* Animated Moon Background */}
+      <AnimatedMoon className="fixed top-20 right-20 pointer-events-none opacity-30" />
+      
       {/* Background Pattern */}
       <div className="absolute inset-0 opacity-40">
         <div className="absolute inset-0 bg-repeat" style={{
@@ -21,19 +26,12 @@ const LoginPage = ({ onLogin }) => {
       <div className="relative min-h-screen flex items-center justify-center p-4">
         <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           
-          {/* Left Side - Branding */}
+          {/* Left Side - Moona Branding */}
           <div className="text-white space-y-8">
             <div className="space-y-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-12 h-12 bg-gradient-to-r from-emerald-400 to-blue-500 rounded-xl flex items-center justify-center">
-                  <TrendingUp className="w-7 h-7 text-white" />
-                </div>
-                <h1 className="text-4xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
-                  InvestTracker
-                </h1>
-              </div>
-              <p className="text-xl text-gray-300 max-w-lg">
-                Your comprehensive investment portfolio tracker for stocks, crypto, and retirement accounts
+              <MoonaLogo size="xl" showTagline={true} className="text-white" />
+              <p className="text-xl text-slate-300 max-w-lg">
+                Track your stocks, crypto, and retirement investments with celestial precision
               </p>
             </div>
 
