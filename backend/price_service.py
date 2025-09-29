@@ -218,6 +218,8 @@ class PriceService:
             mock_data = mock_crypto_prices[symbol.upper()]
             return {
                 "symbol": symbol.upper(),
+                "name": f"{symbol.upper()}",  # Crypto doesn't need company names
+                "sector": "Cryptocurrency",
                 "price": mock_data['price'],
                 "change_24h": mock_data['change_percent'],
                 "change_percent": mock_data['change_percent'],
