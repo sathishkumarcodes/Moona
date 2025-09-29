@@ -42,8 +42,8 @@ const LoginPage = ({ onLogin }) => {
                   <BarChart3 className="w-5 h-5 text-emerald-400" />
                 </div>
                 <div>
-                  <h3 className="font-semibold">Real-time Analytics</h3>
-                  <p className="text-sm text-gray-400">Live portfolio tracking</p>
+                  <h3 className="font-semibold">Stellar Analytics</h3>
+                  <p className="text-sm text-slate-400">Real-time portfolio insights</p>
                 </div>
               </div>
 
@@ -52,8 +52,8 @@ const LoginPage = ({ onLogin }) => {
                   <Shield className="w-5 h-5 text-blue-400" />
                 </div>
                 <div>
-                  <h3 className="font-semibold">Secure & Private</h3>
-                  <p className="text-sm text-gray-400">Bank-level security</p>
+                  <h3 className="font-semibold">Cosmic Security</h3>
+                  <p className="text-sm text-slate-400">Bank-level protection</p>
                 </div>
               </div>
 
@@ -62,8 +62,8 @@ const LoginPage = ({ onLogin }) => {
                   <Wallet className="w-5 h-5 text-purple-400" />
                 </div>
                 <div>
-                  <h3 className="font-semibold">Multi-Asset Support</h3>
-                  <p className="text-sm text-gray-400">Stocks, crypto, Roth IRA</p>
+                  <h3 className="font-semibold">Multi-Asset Galaxy</h3>
+                  <p className="text-sm text-slate-400">Stocks, crypto, retirement</p>
                 </div>
               </div>
 
@@ -72,8 +72,8 @@ const LoginPage = ({ onLogin }) => {
                   <TrendingUp className="w-5 h-5 text-orange-400" />
                 </div>
                 <div>
-                  <h3 className="font-semibold">SPY Comparison</h3>
-                  <p className="text-sm text-gray-400">Benchmark analysis</p>
+                  <h3 className="font-semibold">Market Constellation</h3>
+                  <p className="text-sm text-slate-400">SPY benchmark tracking</p>
                 </div>
               </div>
             </div>
