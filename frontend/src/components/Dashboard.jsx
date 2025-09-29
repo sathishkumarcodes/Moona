@@ -124,12 +124,12 @@ const Dashboard = () => {
 
         {/* Main Content Tabs */}
         <Tabs value={selectedTab} onValueChange={setSelectedTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-5 mb-6">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="analytics">Analytics</TabsTrigger>
-            <TabsTrigger value="allocation">Allocation</TabsTrigger>
-            <TabsTrigger value="investments">Holdings</TabsTrigger>
-            <TabsTrigger value="spy-comparison">vs SPY</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-5 mb-8 bg-white/70 backdrop-blur-sm border-0 shadow-lg rounded-xl p-1">
+            <TabsTrigger value="overview" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-md rounded-lg font-medium transition-all duration-200">Overview</TabsTrigger>
+            <TabsTrigger value="analytics" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md rounded-lg font-medium transition-all duration-200">Analytics</TabsTrigger>
+            <TabsTrigger value="allocation" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-md rounded-lg font-medium transition-all duration-200">Allocation</TabsTrigger>
+            <TabsTrigger value="investments" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-orange-600 data-[state=active]:text-white data-[state=active]:shadow-md rounded-lg font-medium transition-all duration-200">Holdings</TabsTrigger>
+            <TabsTrigger value="spy-comparison" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500 data-[state=active]:to-red-600 data-[state=active]:text-white data-[state=active]:shadow-md rounded-lg font-medium transition-all duration-200">vs SPY</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
