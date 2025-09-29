@@ -16,6 +16,11 @@ const MoonaLogo = ({ size = 'md', className = '', showTagline = false }) => {
       moonSize: 'w-10 h-10 text-2xl',
       title: 'text-2xl',
       tagline: 'text-base'
+    },
+    xl: {
+      moonSize: 'w-12 h-12 text-3xl',
+      title: 'text-3xl',
+      tagline: 'text-lg'
     }
   };
 
