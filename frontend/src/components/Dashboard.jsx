@@ -278,9 +278,9 @@ const Dashboard = () => {
             </div>
           </div>
         ) : (
-          <div className="mb-8">
+          <div className="mb-4">
             {/* Header Section */}
-            <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 rounded-t-2xl p-6 text-white">
+            <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 rounded-t-2xl p-4 text-white">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
                   <div className="p-3 bg-gradient-to-r from-emerald-400 to-blue-500 rounded-xl">
