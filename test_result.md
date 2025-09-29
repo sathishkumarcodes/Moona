@@ -202,7 +202,53 @@ backend:
           comment: "Price service working correctly but experiencing expected rate limiting from Yahoo Finance API. This is normal behavior for free APIs. Service properly handles errors and returns appropriate error messages."
 
 frontend:
-  # No frontend testing performed as per testing agent instructions
+  - task: "Dashboard Data Loading"
+    implemented: true
+    working: false
+    file: "/app/frontend/src/components/Dashboard.jsx"
+    stuck_count: 1
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: false
+          agent: "testing"
+          comment: "CRITICAL ISSUE: Frontend API calls to /api/holdings and /api/holdings/portfolio/summary are being aborted (net::ERR_ABORTED). Dashboard shows $0.00 instead of actual portfolio data ($8,500+). Backend APIs work correctly when tested directly with curl. Issue appears to be with frontend axios configuration using withCredentials:true causing request abortion. Charts showing NaN errors due to missing data."
+  
+  - task: "Portfolio Display"
+    implemented: true
+    working: false
+    file: "/app/frontend/src/components/Dashboard.jsx"
+    stuck_count: 1
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: false
+          agent: "testing"
+          comment: "Portfolio shows $0.00 everywhere instead of expected $8,500+ value. KPI table shows 'Portfolio Total: $0.00' with no asset breakdown. No holdings data displayed in table."
+  
+  - task: "Chart Rendering"
+    implemented: true
+    working: false
+    file: "/app/frontend/src/components/Dashboard.jsx"
+    stuck_count: 1
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+        - working: false
+          agent: "testing"
+          comment: "Charts showing multiple NaN (Not a Number) errors in console due to missing data from failed API calls. SVG elements receiving NaN values for coordinates and dimensions."
+  
+  - task: "Tab Navigation"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/components/Dashboard.jsx"
+    stuck_count: 0
+    priority: "low"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "Tab navigation (Overview, Analytics, Allocation, Holdings, vs SPY) is functional and responsive."
 
 metadata:
   created_by: "testing_agent"
