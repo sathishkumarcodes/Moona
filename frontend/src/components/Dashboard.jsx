@@ -133,10 +133,12 @@ const Dashboard = () => {
 
         {/* Main Content Tabs */}
         <Tabs value={selectedTab} onValueChange={setSelectedTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-6">
-            <TabsTrigger value="overview">Portfolio Overview</TabsTrigger>
-            <TabsTrigger value="investments">All Investments</TabsTrigger>
-            <TabsTrigger value="spy-comparison">SPY Comparison</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-5 mb-6">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="analytics">Analytics</TabsTrigger>
+            <TabsTrigger value="allocation">Allocation</TabsTrigger>
+            <TabsTrigger value="investments">Holdings</TabsTrigger>
+            <TabsTrigger value="spy-comparison">vs SPY</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
