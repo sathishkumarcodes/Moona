@@ -187,19 +187,21 @@ const Dashboard = () => {
           <div className="absolute inset-0 bg-gradient-to-r from-blue-400/10 via-purple-400/10 to-pink-400/10 rounded-2xl blur-xl"></div>
           <div className="relative bg-white/80 backdrop-blur-xl border border-white/30 rounded-2xl p-6 shadow-2xl">
             <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center space-y-4 lg:space-y-0">
-              <div className="space-y-2">
-                <div className="flex items-center space-x-3">
-                  <div className="relative">
-                    <div className="absolute -inset-1 bg-gradient-to-r from-emerald-600 to-blue-600 rounded-xl blur opacity-60 animate-pulse"></div>
-                    <div className="relative p-3 bg-gradient-to-r from-emerald-500 to-blue-600 rounded-xl shadow-lg">
-                      <BarChart3 className="w-7 h-7 text-white" />
+              <div className="space-y-3">
+                <div className="flex items-center space-x-4">
+                  <div className="relative group">
+                    <div className="absolute -inset-2 bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 rounded-2xl blur-lg opacity-70 group-hover:opacity-100 animate-pulse"></div>
+                    <div className="relative p-4 bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 rounded-2xl shadow-2xl transform group-hover:scale-105 transition-all duration-300">
+                      <div className="text-3xl">🌙</div>
                     </div>
                   </div>
                   <div>
-                    <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 bg-clip-text text-transparent">
-                      Investment Portfolio
+                    <h1 className="text-4xl font-black bg-gradient-to-r from-purple-600 via-pink-500 to-cyan-400 bg-clip-text text-transparent drop-shadow-lg">
+                      Moona
                     </h1>
-                    <p className="text-slate-600 font-medium">Real-time wealth management & analytics</p>
+                    <p className="text-lg font-bold bg-gradient-to-r from-slate-700 to-purple-600 bg-clip-text text-transparent">
+                      where your portfolio shines brighter ✨
+                    </p>
                   </div>
                 </div>
                 
