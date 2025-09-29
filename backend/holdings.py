@@ -248,6 +248,8 @@ async def update_holding(
             update_fields["avg_cost"] = update_data.avg_cost
         if update_data.sector is not None:
             update_fields["sector"] = update_data.sector
+        if update_data.platform is not None:
+            update_fields["platform"] = update_data.platform
         
         if not update_fields:
             raise HTTPException(status_code=400, detail="No fields to update")
