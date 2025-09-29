@@ -290,6 +290,37 @@ const AddHoldingModal = ({ onHoldingAdded }) => {
             </div>
           </div>
 
+          {/* Platform Selection */}
+          {formData.type && (
+            <div className="space-y-2">
+              <Label htmlFor="platform">Platform/Account *</Label>
+              <Select value={formData.platform} onValueChange={(value) => handleInputChange('platform', value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select where this asset is held" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availablePlatforms.map((platform) => (
+                    <SelectItem key={platform} value={platform}>
+                      {platform}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="sector">Sector (Optional)</Label>
+              <Input
+                id="sector"
+                placeholder="e.g., Technology, Healthcare"
+                value={formData.sector}
+                onChange={(e) => handleInputChange('sector', e.target.value)}
+              />
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="shares">Shares/Units *</Label>
