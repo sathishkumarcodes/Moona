@@ -8,7 +8,7 @@ import { useAuth } from './AuthProvider';
 import MoonaLogo from './MoonaLogo';
 import AddHoldingModal from './AddHoldingModal';
 
-const Navbar = () => {
+const Navbar = ({ refreshData, isRefreshing, exportToExcel, handleHoldingAdded }) => {
   const { user, logout } = useAuth();
 
   const handleLogout = () => {
