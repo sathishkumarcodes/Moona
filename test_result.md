@@ -294,9 +294,11 @@ metadata:
 
 test_plan:
   current_focus:
+    - "Google OAuth Authentication Flow"
     - "Dashboard Data Loading"
     - "Portfolio Display"
   stuck_tasks:
+    - "Google OAuth Authentication Flow"
     - "Dashboard Data Loading"
     - "Portfolio Display"
     - "Chart Rendering"
