@@ -212,7 +212,7 @@ const Dashboard = () => {
           onHoldingUpdated={handleHoldingUpdated}
         />
         {/* Enhanced Action Bar with Glass Morphism */}
-        <div className="relative mb-8">
+        <div className="relative mb-4">
           <div className="absolute inset-0 bg-gradient-to-r from-blue-400/10 via-purple-400/10 to-pink-400/10 rounded-2xl blur-xl"></div>
           <div className="relative bg-white/80 backdrop-blur-xl border border-white/30 rounded-2xl p-6 shadow-2xl">
             <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center space-y-4 lg:space-y-0">
