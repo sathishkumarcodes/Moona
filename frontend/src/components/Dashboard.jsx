@@ -330,13 +330,22 @@ const Dashboard = () => {
                 </CardHeader>
                 <CardContent>
                   {(() => {
-                    const best = mockInvestments.sort((a, b) => b.gainLossPercent - a.gainLossPercent)[0];
+                    if (!holdings || holdings.length === 0) {
+                      return (
+                        <div>
+                          <div className="font-semibold">No holdings yet</div>
+                          <div className="text-sm text-gray-600">Add your first investment</div>
+                          <div className="text-lg font-bold text-gray-400 mt-1">--</div>
+                        </div>
+                      );
+                    }
+                    const best = [...holdings].sort((a, b) => (b.gain_loss_percent || 0) - (a.gain_loss_percent || 0))[0];
                     return (
                       <div>
                         <div className="font-semibold">{best.symbol}</div>
                         <div className="text-sm text-gray-600">{best.name}</div>
-                        <div className="text-lg font-bold text-emerald-600 mt-1">
-                          +{formatPercent(best.gainLossPercent)}
+                        <div className={`text-lg font-bold mt-1 ${getChangeColor(best.gain_loss_percent || 0)}`}>
+                          {formatPercent(best.gain_loss_percent || 0)}
                         </div>
                       </div>
                     );
