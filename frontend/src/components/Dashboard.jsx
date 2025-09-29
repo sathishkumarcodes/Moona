@@ -243,7 +243,7 @@ const Dashboard = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="pt-6">
-                  <PerformanceChart data={mockPerformanceHistory} />
+                  <PerformanceChart data={performanceHistory} />
                 </CardContent>
               </Card>
               
