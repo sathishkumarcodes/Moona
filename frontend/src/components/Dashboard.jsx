@@ -744,7 +744,17 @@ const Dashboard = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ContributionChart data={mockMonthlyContributions} />
+                  <ContributionChart data={[
+                    { month: 'Jan 2024', amount: 6000 },
+                    { month: 'Feb 2024', amount: 6000 },
+                    { month: 'Mar 2024', amount: 6500 },
+                    { month: 'Apr 2024', amount: 7000 },
+                    { month: 'May 2024', amount: 6000 },
+                    { month: 'Jun 2024', amount: 5500 },
+                    { month: 'Jul 2024', amount: 6500 },
+                    { month: 'Aug 2024', amount: 6000 },
+                    { month: 'Sep 2024', amount: 7200 }
+                  ]} />
                 </CardContent>
               </Card>
             </div>
