@@ -4,7 +4,13 @@ import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Search, Filter, TrendingUp, TrendingDown } from 'lucide-react';
+import { Search, Filter, TrendingUp, TrendingDown, Edit3, Trash2, MoreVertical } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
+import { useToast } from '../hooks/use-toast';
+import axios from 'axios';
+
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+const API = `${BACKEND_URL}/api`;
 
 const InvestmentList = ({ investments, onEdit, onDelete, isLoading }) => {
   const [searchTerm, setSearchTerm] = useState('');
