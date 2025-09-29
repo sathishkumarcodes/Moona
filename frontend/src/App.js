@@ -16,10 +16,10 @@ const ProtectedRoute = ({ children }) => {
     return <LoadingSpinner />;
   }
   
-  // For testing purposes, bypass authentication and show navbar with mock user
-  // if (!isAuthenticated) {
-  //   return <Navigate to="/login" replace />;
-  // }
+  // Enable proper authentication flow
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
   
   return (
     <>
@@ -36,10 +36,10 @@ const PublicRoute = ({ children }) => {
     return <LoadingSpinner />;
   }
   
-  // For testing purposes, bypass authentication  
-  // if (isAuthenticated) {
-  //   return <Navigate to="/dashboard" replace />;
-  // }
+  // If user is already authenticated, redirect to dashboard
+  if (isAuthenticated) {
+    return <Navigate to="/dashboard" replace />;
+  }
   
   return children;
 };
