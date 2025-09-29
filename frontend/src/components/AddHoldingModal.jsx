@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Card, CardContent } from './ui/card';
-import { Plus, Search, TrendingUp, DollarSign } from 'lucide-react';
+import { Plus, Search, TrendingUp, DollarSign, Loader2 } from 'lucide-react';
 import { useToast } from '../hooks/use-toast';
 import axios from 'axios';
 
@@ -17,6 +17,7 @@ const AddHoldingModal = ({ onHoldingAdded }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [currentPrice, setCurrentPrice] = useState(null);
+  const [searchResults, setSearchResults] = useState([]);
   const [formData, setFormData] = useState({
     symbol: '',
     name: '',
@@ -29,6 +30,16 @@ const AddHoldingModal = ({ onHoldingAdded }) => {
   const [availablePlatforms, setAvailablePlatforms] = useState([]);
   
   const { toast } = useToast();
+
+  // Debounced search function
+  const debounceSearch = useCallback(
+    debounce((symbol) => {
+      if (symbol.length >= 2) {
+        searchSymbol(symbol);
+      }
+    }, 300),
+    []
+  );
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({
