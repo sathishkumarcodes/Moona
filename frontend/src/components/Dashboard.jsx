@@ -212,41 +212,75 @@ const Dashboard = () => {
 
         {/* Portfolio Summary KPI Table */}
         {isLoading ? (
-          <Card className="bg-white/70 backdrop-blur-sm border-0 shadow-xl mb-8">
-            <CardContent className="p-6">
+          <div className="mb-8">
+            <div className="bg-gradient-to-r from-slate-50 to-blue-50 rounded-2xl p-8 shadow-lg border border-slate-200/50">
               <div className="animate-pulse">
-                <div className="h-6 bg-gray-200 rounded mb-4"></div>
-                <div className="space-y-3">
+                <div className="h-8 bg-gradient-to-r from-slate-200 to-slate-300 rounded-lg mb-6"></div>
+                <div className="space-y-4">
                   {[...Array(4)].map((_, i) => (
-                    <div key={i} className="grid grid-cols-4 gap-4">
-                      <div className="h-4 bg-gray-200 rounded"></div>
-                      <div className="h-4 bg-gray-200 rounded"></div>
-                      <div className="h-4 bg-gray-200 rounded"></div>
-                      <div className="h-4 bg-gray-200 rounded"></div>
+                    <div key={i} className="grid grid-cols-5 gap-6">
+                      <div className="h-5 bg-slate-200 rounded-md"></div>
+                      <div className="h-5 bg-slate-200 rounded-md"></div>
+                      <div className="h-5 bg-slate-200 rounded-md"></div>
+                      <div className="h-5 bg-slate-200 rounded-md"></div>
+                      <div className="h-5 bg-slate-200 rounded-md"></div>
                     </div>
                   ))}
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         ) : (
-          <Card className="bg-white/70 backdrop-blur-sm border-0 shadow-xl hover:shadow-2xl transition-all duration-300 mb-8">
-            <CardHeader>
-              <CardTitle className="text-xl font-bold text-gray-900 flex items-center">
-                <BarChart3 className="w-6 h-6 mr-3 text-emerald-600" />
-                Portfolio Performance Summary
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
+          <div className="mb-8">
+            {/* Header Section */}
+            <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 rounded-t-2xl p-6 text-white">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <div className="p-3 bg-gradient-to-r from-emerald-400 to-blue-500 rounded-xl">
+                    <BarChart3 className="w-7 h-7 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold bg-gradient-to-r from-white to-slate-200 bg-clip-text text-transparent">
+                      Portfolio Performance
+                    </h2>
+                    <p className="text-slate-300 text-sm">Real-time investment analytics</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-3xl font-bold text-white">
+                    {formatCurrency(portfolioSummary?.total_value || 0)}
+                  </div>
+                  <div className={`text-lg font-semibold ${(portfolioSummary?.total_gain_loss || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {(portfolioSummary?.total_gain_loss || 0) >= 0 ? '+' : ''}
+                    {formatCurrency(portfolioSummary?.total_gain_loss || 0)} 
+                    ({(portfolioSummary?.total_gain_loss_percent || 0) >= 0 ? '+' : ''}
+                    {(portfolioSummary?.total_gain_loss_percent || 0).toFixed(2)}%)
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* KPI Table */}
+            <div className="bg-white rounded-b-2xl shadow-2xl border border-slate-200/50 overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b-2 border-gray-200">
-                      <th className="text-left py-3 px-2 font-semibold text-gray-700">Investment</th>
-                      <th className="text-right py-3 px-2 font-semibold text-gray-700">Cost Basis</th>
-                      <th className="text-right py-3 px-2 font-semibold text-gray-700">Current Value</th>
-                      <th className="text-right py-3 px-2 font-semibold text-gray-700">Gain/Loss</th>
-                      <th className="text-right py-3 px-2 font-semibold text-gray-700">Percentage Gain</th>
+                    <tr className="bg-gradient-to-r from-slate-50 to-slate-100 border-b border-slate-200">
+                      <th className="text-left py-4 px-6 font-bold text-slate-700 text-sm uppercase tracking-wider">
+                        Investment Type
+                      </th>
+                      <th className="text-right py-4 px-6 font-bold text-slate-700 text-sm uppercase tracking-wider">
+                        Cost Basis
+                      </th>
+                      <th className="text-right py-4 px-6 font-bold text-slate-700 text-sm uppercase tracking-wider">
+                        Current Value
+                      </th>
+                      <th className="text-right py-4 px-6 font-bold text-slate-700 text-sm uppercase tracking-wider">
+                        Gain/Loss
+                      </th>
+                      <th className="text-right py-4 px-6 font-bold text-slate-700 text-sm uppercase tracking-wider">
+                        Return %
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -269,24 +303,72 @@ const Dashboard = () => {
                         assetBreakdown[type].value += holding.total_value || 0;
                         assetBreakdown[type].gainLoss += holding.gain_loss || 0;
                       });
+
+                      const getAssetIcon = (type) => {
+                        switch(type) {
+                          case 'Stocks': return '📈';
+                          case 'Crypto': return '₿';
+                          case 'Roth IRA': return '🏛️';
+                          default: return '💼';
+                        }
+                      };
+
+                      const getAssetColor = (type) => {
+                        switch(type) {
+                          case 'Stocks': return 'bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100';
+                          case 'Crypto': return 'bg-gradient-to-r from-orange-50 to-red-50 hover:from-orange-100 hover:to-red-100';
+                          case 'Roth IRA': return 'bg-gradient-to-r from-purple-50 to-violet-50 hover:from-purple-100 hover:to-violet-100';
+                          default: return 'bg-gradient-to-r from-gray-50 to-slate-50 hover:from-gray-100 hover:to-slate-100';
+                        }
+                      };
                       
-                      return Object.entries(assetBreakdown).map(([type, data]) => {
+                      return Object.entries(assetBreakdown).map(([type, data], index) => {
                         const percentageGain = data.cost > 0 ? ((data.gainLoss / data.cost) * 100) : 0;
+                        const isPositive = data.gainLoss >= 0;
                         
                         return (
-                          <tr key={type} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                            <td className="py-3 px-2 font-medium text-gray-900">{type}</td>
-                            <td className="py-3 px-2 text-right font-mono text-gray-700">
-                              {formatCurrency(data.cost)}
+                          <tr key={type} className={`${getAssetColor(type)} border-b border-slate-100 transition-all duration-200 hover:scale-[1.01] hover:shadow-md`}>
+                            <td className="py-5 px-6">
+                              <div className="flex items-center space-x-3">
+                                <span className="text-2xl">{getAssetIcon(type)}</span>
+                                <div>
+                                  <div className="font-bold text-slate-900 text-lg">{type}</div>
+                                  <div className="text-slate-600 text-sm">
+                                    {portfolioSummary?.asset_breakdown?.[type.toLowerCase().replace(' ', '_')] || 0} holdings
+                                  </div>
+                                </div>
+                              </div>
                             </td>
-                            <td className="py-3 px-2 text-right font-mono font-semibold text-gray-900">
-                              {formatCurrency(data.value)}
+                            <td className="py-5 px-6 text-right">
+                              <div className="font-semibold text-slate-700 text-lg">
+                                {formatCurrency(data.cost)}
+                              </div>
                             </td>
-                            <td className={`py-3 px-2 text-right font-mono font-semibold ${getChangeColor(data.gainLoss)}`}>
-                              {data.gainLoss >= 0 ? '+' : ''}{formatCurrency(data.gainLoss)}
+                            <td className="py-5 px-6 text-right">
+                              <div className="font-bold text-slate-900 text-lg">
+                                {formatCurrency(data.value)}
+                              </div>
                             </td>
-                            <td className={`py-3 px-2 text-right font-mono font-semibold ${getChangeColor(data.gainLoss)}`}>
-                              {percentageGain >= 0 ? '+' : ''}{percentageGain.toFixed(2)}%
+                            <td className="py-5 px-6 text-right">
+                              <div className={`font-bold text-lg flex items-center justify-end space-x-2 ${isPositive ? 'text-emerald-600' : 'text-red-600'}`}>
+                                {isPositive ? (
+                                  <TrendingUp className="w-5 h-5" />
+                                ) : (
+                                  <TrendingDown className="w-5 h-5" />
+                                )}
+                                <span>
+                                  {data.gainLoss >= 0 ? '+' : ''}{formatCurrency(data.gainLoss)}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="py-5 px-6 text-right">
+                              <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-bold ${
+                                isPositive 
+                                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' 
+                                  : 'bg-red-100 text-red-800 border border-red-200'
+                              }`}>
+                                {percentageGain >= 0 ? '+' : ''}{percentageGain.toFixed(2)}%
+                              </div>
                             </td>
                           </tr>
                         );
@@ -294,52 +376,122 @@ const Dashboard = () => {
                     })()}
                     
                     {/* Overall Total Row */}
-                    <tr className="border-t-2 border-gray-300 bg-gray-50 font-bold">
-                      <td className="py-4 px-2 text-gray-900 text-lg">Overall</td>
-                      <td className="py-4 px-2 text-right font-mono text-gray-900">
-                        {formatCurrency(portfolioSummary?.total_cost || 0)}
+                    <tr className="bg-gradient-to-r from-slate-800 to-slate-900 text-white">
+                      <td className="py-6 px-6">
+                        <div className="flex items-center space-x-3">
+                          <div className="p-2 bg-gradient-to-r from-emerald-400 to-blue-500 rounded-lg">
+                            <Target className="w-6 h-6 text-white" />
+                          </div>
+                          <div>
+                            <div className="font-bold text-xl text-white">Portfolio Total</div>
+                            <div className="text-slate-300 text-sm">Complete overview</div>
+                          </div>
+                        </div>
                       </td>
-                      <td className="py-4 px-2 text-right font-mono text-gray-900 text-lg">
-                        {formatCurrency(portfolioSummary?.total_value || 0)}
+                      <td className="py-6 px-6 text-right">
+                        <div className="font-bold text-slate-200 text-lg">
+                          {formatCurrency(portfolioSummary?.total_cost || 0)}
+                        </div>
                       </td>
-                      <td className={`py-4 px-2 text-right font-mono text-lg ${getChangeColor(portfolioSummary?.total_gain_loss || 0)}`}>
-                        {(portfolioSummary?.total_gain_loss || 0) >= 0 ? '+' : ''}
-                        {formatCurrency(portfolioSummary?.total_gain_loss || 0)}
+                      <td className="py-6 px-6 text-right">
+                        <div className="font-bold text-white text-xl">
+                          {formatCurrency(portfolioSummary?.total_value || 0)}
+                        </div>
                       </td>
-                      <td className={`py-4 px-2 text-right font-mono text-lg ${getChangeColor(portfolioSummary?.total_gain_loss || 0)}`}>
-                        {(portfolioSummary?.total_gain_loss_percent || 0) >= 0 ? '+' : ''}
-                        {(portfolioSummary?.total_gain_loss_percent || 0).toFixed(2)}%
+                      <td className="py-6 px-6 text-right">
+                        <div className={`font-bold text-xl flex items-center justify-end space-x-2 ${
+                          (portfolioSummary?.total_gain_loss || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'
+                        }`}>
+                          {(portfolioSummary?.total_gain_loss || 0) >= 0 ? (
+                            <TrendingUp className="w-6 h-6" />
+                          ) : (
+                            <TrendingDown className="w-6 h-6" />
+                          )}
+                          <span>
+                            {(portfolioSummary?.total_gain_loss || 0) >= 0 ? '+' : ''}
+                            {formatCurrency(portfolioSummary?.total_gain_loss || 0)}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-6 px-6 text-right">
+                        <div className={`inline-flex items-center px-4 py-2 rounded-full text-lg font-bold ${
+                          (portfolioSummary?.total_gain_loss || 0) >= 0 
+                            ? 'bg-emerald-400 text-emerald-900 border-2 border-emerald-300' 
+                            : 'bg-red-400 text-red-900 border-2 border-red-300'
+                        }`}>
+                          {(portfolioSummary?.total_gain_loss_percent || 0) >= 0 ? '+' : ''}
+                          {(portfolioSummary?.total_gain_loss_percent || 0).toFixed(2)}%
+                        </div>
                       </td>
                     </tr>
                   </tbody>
                 </table>
               </div>
               
-              {/* Quick Stats Row */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6 pt-4 border-t border-gray-200">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-gray-900">{portfolioSummary?.asset_count || 0}</div>
-                  <div className="text-sm text-gray-600">Total Holdings</div>
-                </div>
-                <div className="text-center">
-                  <div className={`text-2xl font-bold ${getChangeColor(portfolioSummary?.total_gain_loss || 0)}`}>
-                    {(portfolioSummary?.total_gain_loss || 0) >= 0 ? '+' : ''}
-                    {formatPercent(portfolioSummary?.total_gain_loss_percent || 0)}
+              {/* Enhanced Bottom Stats */}
+              <div className="bg-gradient-to-r from-slate-50 to-blue-50 p-6 border-t border-slate-200">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                  <div className="bg-white rounded-xl p-4 shadow-md border border-slate-200 hover:shadow-lg transition-all duration-200">
+                    <div className="flex items-center space-x-3">
+                      <div className="p-2 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg">
+                        <Activity className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <div className="text-2xl font-bold text-slate-900">{portfolioSummary?.asset_count || 0}</div>
+                        <div className="text-sm text-slate-600 font-medium">Total Holdings</div>
+                      </div>
+                    </div>
                   </div>
-                  <div className="text-sm text-gray-600">Total Return</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-blue-600">
-                    {(() => {
-                      const best = holdings?.sort((a, b) => (b.gain_loss_percent || 0) - (a.gain_loss_percent || 0))[0];
-                      return best ? `+${best.gain_loss_percent.toFixed(1)}%` : '--';
-                    })()}
+                  
+                  <div className="bg-white rounded-xl p-4 shadow-md border border-slate-200 hover:shadow-lg transition-all duration-200">
+                    <div className="flex items-center space-x-3">
+                      <div className={`p-2 rounded-lg ${(portfolioSummary?.total_gain_loss || 0) >= 0 ? 'bg-gradient-to-r from-emerald-500 to-emerald-600' : 'bg-gradient-to-r from-red-500 to-red-600'}`}>
+                        <TrendingUp className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <div className={`text-2xl font-bold ${getChangeColor(portfolioSummary?.total_gain_loss || 0)}`}>
+                          {(portfolioSummary?.total_gain_loss || 0) >= 0 ? '+' : ''}
+                          {formatPercent(portfolioSummary?.total_gain_loss_percent || 0)}
+                        </div>
+                        <div className="text-sm text-slate-600 font-medium">Total Return</div>
+                      </div>
+                    </div>
                   </div>
-                  <div className="text-sm text-gray-600">Best Performer</div>
+                  
+                  <div className="bg-white rounded-xl p-4 shadow-md border border-slate-200 hover:shadow-lg transition-all duration-200">
+                    <div className="flex items-center space-x-3">
+                      <div className="p-2 bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg">
+                        <Target className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <div className="text-2xl font-bold text-purple-600">
+                          {(() => {
+                            const best = holdings?.sort((a, b) => (b.gain_loss_percent || 0) - (a.gain_loss_percent || 0))[0];
+                            return best ? `+${best.gain_loss_percent.toFixed(1)}%` : '--';
+                          })()}
+                        </div>
+                        <div className="text-sm text-slate-600 font-medium">Best Performer</div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-white rounded-xl p-4 shadow-md border border-slate-200 hover:shadow-lg transition-all duration-200">
+                    <div className="flex items-center space-x-3">
+                      <div className="p-2 bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg">
+                        <Wallet className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <div className="text-2xl font-bold text-orange-600">
+                          {Object.keys(holdings?.reduce((acc, h) => ({...acc, [h.type]: true}), {}) || {}).length}
+                        </div>
+                        <div className="text-sm text-slate-600 font-medium">Asset Types</div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         )}
 
         {/* Main Content Tabs */}
