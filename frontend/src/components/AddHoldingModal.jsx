@@ -258,25 +258,29 @@ const AddHoldingModal = ({ onHoldingAdded }) => {
           <div className="space-y-2">
             <Label htmlFor="symbol">Symbol *</Label>
             <div className="flex space-x-2">
-              <Input
-                id="symbol"
-                placeholder="Enter stock or crypto symbol (e.g., AAPL, BTC)"
-                value={formData.symbol}
-                onChange={(e) => handleInputChange('symbol', e.target.value.toUpperCase())}
-                className="flex-1"
-              />
+              <div className="relative flex-1">
+                <Input
+                  id="symbol"
+                  placeholder="Enter stock or crypto symbol (e.g., AAPL, BTC)"
+                  value={formData.symbol}
+                  onChange={(e) => handleInputChange('symbol', e.target.value.toUpperCase())}
+                  className="pr-8"
+                />
+                {isSearching && (
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                    <Loader2 className="w-4 h-4 animate-spin text-emerald-500" />
+                  </div>
+                )}
+              </div>
               <Button
                 type="button"
                 onClick={searchSymbol}
                 disabled={isSearching}
                 variant="outline"
                 className="px-4"
+                title="Search for symbol"
               >
-                {isSearching ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-emerald-500 border-t-transparent" />
-                ) : (
-                  <Search className="w-4 h-4" />
-                )}
+                <Search className="w-4 h-4" />
               </Button>
             </div>
           </div>
