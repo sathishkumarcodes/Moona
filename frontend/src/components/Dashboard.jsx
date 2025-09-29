@@ -21,6 +21,12 @@ import { useToast } from '../hooks/use-toast';
 
 const Dashboard = () => {
   const [selectedTab, setSelectedTab] = useState('overview');
+  const [holdings, setHoldings] = useState([]);
+  const [portfolioSummary, setPortfolioSummary] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [editingHolding, setEditingHolding] = useState(null);
+  const { toast } = useToast();
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-US', {
