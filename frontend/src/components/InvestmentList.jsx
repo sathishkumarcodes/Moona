@@ -186,7 +186,19 @@ const InvestmentList = ({ investments, onEdit, onDelete, isLoading }) => {
                         </Badge>
                       </div>
                       <p className="text-sm text-gray-600">{investment.name}</p>
-                      <p className="text-xs text-gray-500">{investment.sector}</p>
+                      <div className="flex items-center space-x-2">
+                        <p className="text-xs text-gray-500">{investment.sector}</p>
+                        {investment.platform && (
+                          <>
+                            <span className="text-xs text-gray-400">•</span>
+                            <div className="flex items-center space-x-1">
+                              <span className="text-xs text-blue-600 font-medium bg-blue-50 px-2 py-0.5 rounded-full">
+                                {investment.platform}
+                              </span>
+                            </div>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
 
