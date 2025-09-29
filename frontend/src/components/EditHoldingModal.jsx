@@ -30,10 +30,28 @@ const EditHoldingModal = ({ holding, open, onClose, onHoldingUpdated }) => {
         name: holding.name || '',
         shares: holding.shares?.toString() || '',
         avg_cost: holding.avg_cost?.toString() || '',
-        sector: holding.sector || ''
+        sector: holding.sector || '',
+        platform: holding.platform || ''
       });
+      
+      // Load platforms for the holding's type
+      if (holding.type) {
+        loadPlatforms(holding.type);
+      }
     }
   }, [holding, open]);
+
+  const loadPlatforms = async (assetType) => {
+    try {
+      const response = await axios.get(`${API}/holdings/platforms/${assetType}`, {
+        withCredentials: true
+      });
+      setAvailablePlatforms(response.data.platforms || []);
+    } catch (error) {
+      console.error('Error loading platforms:', error);
+      setAvailablePlatforms([]);
+    }
+  };
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({
