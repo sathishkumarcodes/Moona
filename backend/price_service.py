@@ -61,6 +61,8 @@ class PriceService:
                 
                 return {
                     "symbol": symbol,
+                    "name": get_company_name(symbol),
+                    "sector": get_sector(symbol),
                     "price": current_price,
                     "change": change,
                     "change_percent": change_percent,
