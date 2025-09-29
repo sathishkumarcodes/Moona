@@ -202,7 +202,7 @@ const Dashboard = () => {
         <div className="absolute bottom-32 left-2/3 w-1 h-1 bg-blue-200/50 rounded-full animate-pulse delay-2000"></div>
       </div>
       
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
 
         {/* Edit Holding Modal */}
         <EditHoldingModal
