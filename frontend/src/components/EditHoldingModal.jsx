@@ -16,24 +16,32 @@ const EditHoldingModal = ({ holding, open, onClose, onHoldingUpdated }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
+    type: '',
     shares: '',
     avg_cost: '',
     sector: '',
     platform: ''
   });
+  const [showCustomTypeInput, setShowCustomTypeInput] = useState(false);
   const [availablePlatforms, setAvailablePlatforms] = useState([]);
   
   const { toast } = useToast();
 
   useEffect(() => {
     if (holding && open) {
+      const holdingType = holding.type || '';
+      const isCustomType = holdingType && !['stock', 'crypto', 'roth_ira', 'etf', 'bond', '401k', '529', 'child_roth', 'hsa', 'traditional_ira', 'sep_ira'].includes(holdingType.toLowerCase());
+      
       setFormData({
         name: holding.name || '',
+        type: holdingType,
         shares: holding.shares?.toString() || '',
         avg_cost: holding.avg_cost?.toString() || '',
         sector: holding.sector || '',
         platform: holding.platform || ''
       });
+      
+      setShowCustomTypeInput(isCustomType);
       
       // Load platforms for the holding's type
       if (holding.type) {
@@ -59,6 +67,11 @@ const EditHoldingModal = ({ holding, open, onClose, onHoldingUpdated }) => {
       ...prev,
       [field]: value
     }));
+    
+    // Load platforms when asset type changes
+    if (field === 'type' && value) {
+      loadPlatforms(value);
+    }
   };
 
   const calculatePreview = () => {
@@ -98,6 +111,7 @@ const EditHoldingModal = ({ holding, open, onClose, onHoldingUpdated }) => {
     try {
       const payload = {
         name: formData.name,
+        type: formData.type || holding.type,
         shares: parseFloat(formData.shares),
         avg_cost: parseFloat(formData.avg_cost),
         sector: formData.sector || null,
@@ -202,6 +216,58 @@ const EditHoldingModal = ({ holding, open, onClose, onHoldingUpdated }) => {
             </div>
 
             <div className="space-y-2">
+              <Label htmlFor="type">Asset Type *</Label>
+              <div className="relative">
+                <Select 
+                  value={showCustomTypeInput ? 'custom' : formData.type} 
+                  onValueChange={(value) => {
+                    if (value === 'custom') {
+                      setShowCustomTypeInput(true);
+                      setFormData(prev => ({ ...prev, type: '' }));
+                    } else {
+                      setShowCustomTypeInput(false);
+                      handleInputChange('type', value);
+                    }
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select or enter custom type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="stock">Stock</SelectItem>
+                    <SelectItem value="crypto">Cryptocurrency</SelectItem>
+                    <SelectItem value="roth_ira">Roth IRA</SelectItem>
+                    <SelectItem value="etf">ETF</SelectItem>
+                    <SelectItem value="bond">Bond</SelectItem>
+                    <SelectItem value="401k">401(k)</SelectItem>
+                    <SelectItem value="529">529 Plan</SelectItem>
+                    <SelectItem value="child_roth">Child's Roth IRA</SelectItem>
+                    <SelectItem value="hsa">HSA (Health Savings Account)</SelectItem>
+                    <SelectItem value="traditional_ira">Traditional IRA</SelectItem>
+                    <SelectItem value="sep_ira">SEP IRA</SelectItem>
+                    <SelectItem value="custom">+ Add Custom Type</SelectItem>
+                  </SelectContent>
+                </Select>
+                {showCustomTypeInput && (
+                  <Input
+                    id="custom_type"
+                    placeholder="Enter custom asset type (e.g., 401k, 529, Child's Roth)"
+                    value={formData.type}
+                    onChange={(e) => {
+                      const customType = e.target.value.trim().toLowerCase().replace(/\s+/g, '_');
+                      handleInputChange('type', customType);
+                    }}
+                    className="mt-2"
+                    autoFocus
+                  />
+                )}
+              </div>
+              <p className="text-xs text-gray-500">
+                Select from common types or choose "+ Add Custom Type" to enter your own
+              </p>
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="sector">Sector (Optional)</Label>
               <Input
                 id="sector"
@@ -212,18 +278,27 @@ const EditHoldingModal = ({ holding, open, onClose, onHoldingUpdated }) => {
 
             <div className="space-y-2">
               <Label htmlFor="platform">Platform/Account</Label>
-              <Select value={formData.platform} onValueChange={(value) => handleInputChange('platform', value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select platform" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availablePlatforms.map((platform) => (
-                    <SelectItem key={platform} value={platform}>
-                      {platform}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {availablePlatforms.length > 0 ? (
+                <Select value={formData.platform} onValueChange={(value) => handleInputChange('platform', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select platform" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availablePlatforms.map((platform) => (
+                      <SelectItem key={platform} value={platform}>
+                        {platform}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input
+                  id="platform"
+                  placeholder="Enter platform name"
+                  value={formData.platform}
+                  onChange={(e) => handleInputChange('platform', e.target.value)}
+                />
+              )}
             </div>
           </div>
 

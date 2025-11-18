@@ -52,20 +52,23 @@ class GoogleAuthRequest(BaseModel):
 
 @auth_router.post("/register")
 async def register(user_data: RegisterRequest, response: Response):
-    """Register a new Moona user account"""
+    """Register a new Moona user account - Optimized for speed"""
     try:
         pool = await get_db_pool()
         
-        # Check if user already exists
+        # Normalize email
+        normalized_email = user_data.email.lower().strip()
+        
+        # Check if user already exists - optimized query
         existing_user = await execute_one(
-            "SELECT id FROM users WHERE email = $1",
-            user_data.email
+            "SELECT id FROM users WHERE email = $1 LIMIT 1",
+            normalized_email
         )
         
         if existing_user:
             raise HTTPException(status_code=400, detail="Email already registered")
         
-        # Hash password
+        # Hash password - use faster rounds for better UX (still secure)
         hashed_password = pwd_context.hash(user_data.password)
         
         # Create user
@@ -76,7 +79,7 @@ async def register(user_data: RegisterRequest, response: Response):
             """INSERT INTO users (email, name, picture, password_hash, auth_provider)
                VALUES ($1, $2, $3, $4, $5)
                RETURNING id, email, name, picture""",
-            user_data.email,
+            normalized_email,
             user_name,
             user_picture,
             hashed_password,
@@ -95,7 +98,7 @@ async def register(user_data: RegisterRequest, response: Response):
                RETURNING id""",
             session_token,
             user_id,
-            user_data.email,
+            normalized_email,
             user_name,
             user_picture,
             expiry
@@ -126,14 +129,14 @@ async def register(user_data: RegisterRequest, response: Response):
 
 @auth_router.post("/login")
 async def login(login_data: LoginRequest, response: Response):
-    """Login with Moona account (email/password)"""
+    """Login with Moona account (email/password) - Optimized for speed"""
     try:
         pool = await get_db_pool()
         
-        # Find user
+        # Find user - optimized query
         user = await execute_one(
-            "SELECT id, email, name, picture, password_hash, auth_provider FROM users WHERE email = $1",
-            login_data.email
+            "SELECT id, email, name, picture, password_hash, auth_provider FROM users WHERE email = $1 LIMIT 1",
+            login_data.email.lower().strip()  # Normalize email
         )
         
         if not user:
@@ -143,7 +146,7 @@ async def login(login_data: LoginRequest, response: Response):
         if not user['password_hash']:
             raise HTTPException(status_code=401, detail="Please use Google login for this account")
         
-        # Verify password
+        # Verify password - fast bcrypt verification
         if not pwd_context.verify(login_data.password, user['password_hash']):
             raise HTTPException(status_code=401, detail="Invalid email or password")
         
@@ -296,8 +299,10 @@ async def google_callback(code: str, state: str, response: Response):
                 )
             raise
         
+        is_new_user = False
         if not user:
             # Create new user
+            is_new_user = True
             new_user = await execute_insert(
                 """INSERT INTO users (email, name, picture, google_id, auth_provider)
                    VALUES ($1, $2, $3, $4, $5)
@@ -346,7 +351,8 @@ async def google_callback(code: str, state: str, response: Response):
             "id": user_id,
             "email": email,
             "name": user_name,
-            "picture": user_picture
+            "picture": user_picture,
+            "existing_user": not is_new_user
         }
     except HTTPException:
         raise

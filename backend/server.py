@@ -20,6 +20,7 @@ from coinbase_import import coinbase_router
 from binance_import import binance_router
 from metamask_import import metamask_router, phantom_router
 from fidelity_import import fidelity_router
+from insights import insights_router
 from db_supabase import close_db_pool
 
 ROOT_DIR = Path(__file__).parent
@@ -84,6 +85,7 @@ api_router.include_router(binance_router)
 api_router.include_router(metamask_router)
 api_router.include_router(phantom_router)
 api_router.include_router(fidelity_router)
+api_router.include_router(insights_router)
 
 # Include the api_router in the main app
 app.include_router(api_router)

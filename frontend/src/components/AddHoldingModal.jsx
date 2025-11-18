@@ -27,6 +27,7 @@ const AddHoldingModal = ({ onHoldingAdded }) => {
     sector: '',
     platform: ''
   });
+  const [showCustomTypeInput, setShowCustomTypeInput] = useState(false);
   const [availablePlatforms, setAvailablePlatforms] = useState([]);
   
   const { toast } = useToast();
@@ -263,6 +264,7 @@ const AddHoldingModal = ({ onHoldingAdded }) => {
         sector: '',
         platform: ''
       });
+      setShowCustomTypeInput(false);
       setCurrentPrice(null);
       setAvailablePlatforms([]);
       setOpen(false);
@@ -387,16 +389,54 @@ const AddHoldingModal = ({ onHoldingAdded }) => {
 
             <div className="space-y-2">
               <Label htmlFor="type">Asset Type *</Label>
-              <Select value={formData.type} onValueChange={(value) => handleInputChange('type', value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select asset type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="stock">Stock</SelectItem>
-                  <SelectItem value="crypto">Cryptocurrency</SelectItem>
-                  <SelectItem value="roth_ira">Roth IRA</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="relative">
+                <Select 
+                  value={showCustomTypeInput ? 'custom' : formData.type} 
+                  onValueChange={(value) => {
+                    if (value === 'custom') {
+                      setShowCustomTypeInput(true);
+                      setFormData(prev => ({ ...prev, type: '' }));
+                    } else {
+                      setShowCustomTypeInput(false);
+                      handleInputChange('type', value);
+                    }
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select or enter custom type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="stock">Stock</SelectItem>
+                    <SelectItem value="crypto">Cryptocurrency</SelectItem>
+                    <SelectItem value="roth_ira">Roth IRA</SelectItem>
+                    <SelectItem value="etf">ETF</SelectItem>
+                    <SelectItem value="bond">Bond</SelectItem>
+                    <SelectItem value="401k">401(k)</SelectItem>
+                    <SelectItem value="529">529 Plan</SelectItem>
+                    <SelectItem value="child_roth">Child's Roth IRA</SelectItem>
+                    <SelectItem value="hsa">HSA (Health Savings Account)</SelectItem>
+                    <SelectItem value="traditional_ira">Traditional IRA</SelectItem>
+                    <SelectItem value="sep_ira">SEP IRA</SelectItem>
+                    <SelectItem value="custom">+ Add Custom Type</SelectItem>
+                  </SelectContent>
+                </Select>
+                {showCustomTypeInput && (
+                  <Input
+                    id="custom_type"
+                    placeholder="Enter custom asset type (e.g., 401k, 529, Child's Roth)"
+                    value={formData.type}
+                    onChange={(e) => {
+                      const customType = e.target.value.trim().toLowerCase().replace(/\s+/g, '_');
+                      handleInputChange('type', customType);
+                    }}
+                    className="mt-2"
+                    autoFocus
+                  />
+                )}
+              </div>
+              <p className="text-xs text-gray-500">
+                Select from common types or choose "+ Add Custom Type" to enter your own
+              </p>
             </div>
           </div>
 

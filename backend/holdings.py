@@ -274,14 +274,19 @@ async def get_holdings(
         symbols = [h['symbol'] for h in holdings]
         asset_types = {h['symbol']: h['type'] if h['type'] != 'roth_ira' else 'stock' for h in holdings}
         
-        # Fetch current prices with timeout
+        # Fetch current prices with shorter timeout - use cached prices first
+        # If timeout, use existing database prices (non-blocking)
+        price_data = {}
         try:
             price_data = await asyncio.wait_for(
                 price_service.get_multiple_prices(symbols, asset_types),
-                timeout=10.0  # 10 second timeout
+                timeout=5.0  # Reduced to 5 seconds - fail fast
             )
         except asyncio.TimeoutError:
             logger.warning("Price fetching timed out, using existing prices from database")
+            price_data = {}
+        except Exception as e:
+            logger.warning(f"Price fetching error, using existing prices: {str(e)}")
             price_data = {}
         
         # Update holdings with current prices

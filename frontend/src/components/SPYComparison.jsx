@@ -41,15 +41,15 @@ const SPYComparison = ({ comparison, performanceData }) => {
               {formatCurrency(comparison.portfolioValue)}
             </div>
             <div className="flex items-center space-x-2 mt-2">
-              <Badge variant="outline" className={getChangeBgColor(comparison.portfolioReturn)}>
-                <span className={getChangeColor(comparison.portfolioReturn)}>
-                  {formatPercent(comparison.portfolioReturn)}
+              <Badge variant="outline" className={getChangeBgColor(comparison.portfolioReturnPct)}>
+                <span className={getChangeColor(comparison.portfolioReturnPct)}>
+                  {formatPercent(comparison.portfolioReturnPct)}
                 </span>
               </Badge>
               <span className="text-sm text-gray-600">return</span>
             </div>
             <div className="text-sm text-gray-500 mt-1">
-              Invested: {formatCurrency(comparison.portfolioInvested)}
+              Invested: {formatCurrency(comparison.portfolioInvested || comparison.portfolioValue / (1 + comparison.portfolioReturnPct / 100))}
             </div>
           </CardContent>
         </Card>
@@ -72,7 +72,7 @@ const SPYComparison = ({ comparison, performanceData }) => {
               <span className="text-sm text-gray-600">return</span>
             </div>
             <div className="text-sm text-gray-500 mt-1">
-              Invested: {formatCurrency(comparison.spyInvested)}
+              Invested: {formatCurrency(comparison.spyInvested || (comparison.spyValue / (1 + (comparison.spyReturnPct || 0) / 100)))}
             </div>
           </CardContent>
         </Card>

@@ -15,7 +15,7 @@ class HoldingsService {
     try {
       console.log('holdingsService.getHoldings - calling API:', `${API}/holdings`);
       const response = await this.axios.get(`${API}/holdings`, {
-        timeout: 30000,
+        timeout: 15000, // Reduced from 30s to 15s
         withCredentials: true
       });
       console.log('holdingsService.getHoldings - response status:', response.status);

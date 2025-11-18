@@ -379,10 +379,24 @@ class PriceService:
         """Get prices for multiple symbols efficiently with rate limiting"""
         price_data = {}
         
-        # Process in small batches to avoid overwhelming APIs
-        batch_size = 3
-        for i in range(0, len(symbols), batch_size):
-            batch = symbols[i:i + batch_size]
+        # Check cache first for all symbols - return cached if available
+        cached_count = 0
+        for symbol in symbols:
+            cached_data = self._get_cached_price(symbol)
+            if cached_data:
+                price_data[symbol] = cached_data
+                cached_count += 1
+        
+        # If all prices are cached, return immediately
+        if cached_count == len(symbols):
+            logger.info(f"All {len(symbols)} prices served from cache")
+            return price_data
+        
+        # Process remaining symbols in larger batches for better performance
+        remaining_symbols = [s for s in symbols if s not in price_data]
+        batch_size = 10  # Increased from 3 to 10 for faster processing
+        for i in range(0, len(remaining_symbols), batch_size):
+            batch = remaining_symbols[i:i + batch_size]
             
             # Create tasks for concurrent processing
             tasks = []
@@ -390,11 +404,11 @@ class PriceService:
                 asset_type = asset_types.get(symbol) if asset_types else None
                 tasks.append(self.get_price(symbol, asset_type))
             
-            # Execute batch concurrently with timeout
+            # Execute batch concurrently with shorter timeout
             try:
                 results = await asyncio.wait_for(
                     asyncio.gather(*tasks, return_exceptions=True), 
-                    timeout=15.0  # 15 second timeout per batch
+                    timeout=3.0  # Reduced from 15 to 3 seconds per batch
                 )
                 
                 for symbol, result in zip(batch, results):

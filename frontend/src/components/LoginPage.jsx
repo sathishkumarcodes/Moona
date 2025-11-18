@@ -15,8 +15,56 @@ const LoginPage = ({ onLogin }) => {
   const [isLoading, setIsLoading] = React.useState(false);
   const [isRegistering, setIsRegistering] = React.useState(false);
   const [error, setError] = React.useState('');
+  const [passwordStrength, setPasswordStrength] = React.useState(0);
+  const [emailValid, setEmailValid] = React.useState(true);
+  const [showSuccess, setShowSuccess] = React.useState(false);
   
   const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+
+  // Auto-focus email input on mount
+  React.useEffect(() => {
+    const emailInput = document.getElementById('login-email') || document.getElementById('register-email');
+    if (emailInput) {
+      setTimeout(() => emailInput.focus(), 100);
+    }
+  }, []);
+
+  // Email validation
+  const validateEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  // Password strength calculation
+  React.useEffect(() => {
+    if (!password) {
+      setPasswordStrength(0);
+      return;
+    }
+    
+    let strength = 0;
+    if (password.length >= 6) strength += 1;
+    if (password.length >= 8) strength += 1;
+    if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength += 1;
+    if (/\d/.test(password)) strength += 1;
+    if (/[^a-zA-Z\d]/.test(password)) strength += 1;
+    
+    setPasswordStrength(strength);
+  }, [password]);
+
+  const getPasswordStrengthColor = () => {
+    if (passwordStrength <= 1) return 'bg-red-500';
+    if (passwordStrength <= 2) return 'bg-orange-500';
+    if (passwordStrength <= 3) return 'bg-yellow-500';
+    return 'bg-emerald-500';
+  };
+
+  const getPasswordStrengthText = () => {
+    if (passwordStrength <= 1) return 'Weak';
+    if (passwordStrength <= 2) return 'Fair';
+    if (passwordStrength <= 3) return 'Good';
+    return 'Strong';
+  };
   
   const handleMoonaLogin = async (e) => {
     e.preventDefault();
@@ -24,36 +72,58 @@ const LoginPage = ({ onLogin }) => {
       setError('Please enter both email and password');
       return;
     }
+
+    if (!validateEmail(email)) {
+      setEmailValid(false);
+      setError('Please enter a valid email address');
+      return;
+    }
+    setEmailValid(true);
     
     setIsLoading(true);
     setError('');
     try {
+      // Add timeout for faster failure
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
       const response = await fetch(`${BACKEND_URL}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ email, password }),
+        signal: controller.signal
       });
+      
+      clearTimeout(timeoutId);
       
       if (response.ok) {
         const userData = await response.json();
-        window.location.href = '/dashboard';
+        setShowSuccess(true);
+        // Smooth transition with success animation
+        setTimeout(() => {
+          window.location.href = '/dashboard';
+        }, 500);
       } else {
         const errorData = await response.json().catch(() => ({ detail: 'Login failed' }));
         const errorMsg = errorData.detail || 'Login failed. Please try again.';
         
         // Check if it's a database connection error
         if (errorMsg.includes('Database connection') || errorMsg.includes('MongoDB')) {
-          setError('Database not connected. Please set up MongoDB. See QUICK_FIX_MONGODB.md for instructions.');
+          setError('Database not connected. Please set up Supabase. See QUICK_SUPABASE_FIX.md for instructions.');
         } else {
           setError(errorMsg);
         }
       }
     } catch (error) {
-      console.error('Login error:', error);
-      setError('Login failed. Please try again.');
+      if (error.name === 'AbortError') {
+        setError('Request timed out. Please check your connection and try again.');
+      } else {
+        console.error('Login error:', error);
+        setError('Login failed. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -65,6 +135,14 @@ const LoginPage = ({ onLogin }) => {
       setError('Please enter email and password');
       return;
     }
+
+    if (!validateEmail(email)) {
+      setEmailValid(false);
+      setError('Please enter a valid email address');
+      return;
+    }
+    setEmailValid(true);
+
     if (password.length < 6) {
       setError('Password must be at least 6 characters');
       return;
@@ -73,6 +151,10 @@ const LoginPage = ({ onLogin }) => {
     setIsLoading(true);
     setError('');
     try {
+      // Add timeout for faster failure
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
       const response = await fetch(`${BACKEND_URL}/api/auth/register`, {
         method: 'POST',
         headers: {
@@ -83,26 +165,39 @@ const LoginPage = ({ onLogin }) => {
           email, 
           password,
           name: name || undefined
-        })
+        }),
+        signal: controller.signal
       });
+      
+      clearTimeout(timeoutId);
       
       if (response.ok) {
         const userData = await response.json();
-        window.location.href = '/dashboard';
+        setShowSuccess(true);
+        // Mark as new user for onboarding
+        localStorage.setItem('moona_is_new_user', 'true');
+        // Smooth transition with success animation
+        setTimeout(() => {
+          window.location.href = '/dashboard';
+        }, 500);
       } else {
         const errorData = await response.json().catch(() => ({ detail: 'Registration failed' }));
         const errorMsg = errorData.detail || 'Registration failed. Please try again.';
         
         // Check if it's a database connection error
         if (errorMsg.includes('Database connection') || errorMsg.includes('MongoDB')) {
-          setError('Database not connected. Please set up MongoDB. See QUICK_FIX_MONGODB.md for instructions.');
+          setError('Database not connected. Please set up Supabase. See QUICK_SUPABASE_FIX.md for instructions.');
         } else {
           setError(errorMsg);
         }
       }
     } catch (error) {
-      console.error('Registration error:', error);
-      setError('Registration failed. Please try again.');
+      if (error.name === 'AbortError') {
+        setError('Request timed out. Please check your connection and try again.');
+      } else {
+        console.error('Registration error:', error);
+        setError('Registration failed. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -226,8 +321,15 @@ const LoginPage = ({ onLogin }) => {
             window.history.replaceState({}, document.title, '/login');
             // Remove processed code marker
             sessionStorage.removeItem(processedCodeKey);
-            // Redirect to dashboard immediately
-            window.location.href = '/dashboard';
+            // Check if this is a new user (first time Google login)
+            const isNewUser = !userData.existing_user;
+            if (isNewUser) {
+              localStorage.setItem('moona_is_new_user', 'true');
+            }
+            // Redirect to dashboard with smooth transition
+            setTimeout(() => {
+              window.location.href = '/dashboard';
+            }, 300);
           } else {
             const errorText = await response.text();
             let errorData;
@@ -290,77 +392,99 @@ const LoginPage = ({ onLogin }) => {
         <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           
           {/* Left Side - Moona Branding */}
-          <div className="text-white space-y-8">
-            <div className="space-y-4">
+          <div className="text-white space-y-6">
+            <div className="space-y-3">
               <MoonaLogo size="xl" showTagline={true} className="text-white" />
-              <p className="text-xl text-slate-300 max-w-lg">
-                Track your stocks, crypto, and retirement investments with celestial precision
+              <p className="text-lg text-slate-300 max-w-lg leading-relaxed">
+                Real-time portfolio insights and calm, clear explanations of your investments.
               </p>
             </div>
 
-            {/* Features Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <div className="flex items-center space-x-4 p-4 rounded-xl bg-white/5 backdrop-blur-sm border border-white/10">
-                <div className="w-10 h-10 bg-emerald-500/20 rounded-lg flex items-center justify-center">
-                  <BarChart3 className="w-5 h-5 text-emerald-400" />
-                </div>
-                <div>
-                  <h3 className="font-semibold">Stellar Analytics</h3>
-                  <p className="text-sm text-slate-400">Real-time portfolio insights</p>
-                </div>
-              </div>
+            {/* Features Grid - Using same styles as landing page */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Card className="bg-white/10 backdrop-blur-md border-white/20 hover:bg-white/15 transition-all rounded-xl shadow-sm">
+                <CardContent className="p-4">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-full flex items-center justify-center flex-shrink-0 shadow-lg">
+                      <BarChart3 className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-white text-sm">Stellar Analytics</h3>
+                      <p className="text-xs text-slate-400">Real-time portfolio insights</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-              <div className="flex items-center space-x-4 p-4 rounded-xl bg-white/5 backdrop-blur-sm border border-white/10">
-                <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
-                  <Shield className="w-5 h-5 text-blue-400" />
-                </div>
-                <div>
-                  <h3 className="font-semibold">Cosmic Security</h3>
-                  <p className="text-sm text-slate-400">Bank-level protection</p>
-                </div>
-              </div>
+              <Card className="bg-white/10 backdrop-blur-md border-white/20 hover:bg-white/15 transition-all rounded-xl shadow-sm">
+                <CardContent className="p-4">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center flex-shrink-0 shadow-lg">
+                      <Shield className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-white text-sm">Cosmic Security</h3>
+                      <p className="text-xs text-slate-400">Bank-level protection</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-              <div className="flex items-center space-x-4 p-4 rounded-xl bg-white/5 backdrop-blur-sm border border-white/10">
-                <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
-                  <Wallet className="w-5 h-5 text-purple-400" />
-                </div>
-                <div>
-                  <h3 className="font-semibold">Multi-Asset Galaxy</h3>
-                  <p className="text-sm text-slate-400">Stocks, crypto, retirement</p>
-                </div>
-              </div>
+              <Card className="bg-white/10 backdrop-blur-md border-white/20 hover:bg-white/15 transition-all rounded-xl shadow-sm">
+                <CardContent className="p-4">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0 shadow-lg">
+                      <Wallet className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-white text-sm">Multi-Asset Galaxy</h3>
+                      <p className="text-xs text-slate-400">Stocks, crypto, retirement</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-              <div className="flex items-center space-x-4 p-4 rounded-xl bg-white/5 backdrop-blur-sm border border-white/10">
-                <div className="w-10 h-10 bg-orange-500/20 rounded-lg flex items-center justify-center">
-                  <TrendingUp className="w-5 h-5 text-orange-400" />
-                </div>
-                <div>
-                  <h3 className="font-semibold">Market Constellation</h3>
-                  <p className="text-sm text-slate-400">SPY benchmark tracking</p>
-                </div>
-              </div>
+              <Card className="bg-white/10 backdrop-blur-md border-white/20 hover:bg-white/15 transition-all rounded-xl shadow-sm">
+                <CardContent className="p-4">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-full flex items-center justify-center flex-shrink-0 shadow-lg">
+                      <TrendingUp className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-white text-sm">Market Constellation</h3>
+                      <p className="text-xs text-slate-400">SPY benchmark tracking</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </div>
 
-          {/* Right Side - Login Card */}
+          {/* Right Side - Auth Card */}
           <div className="flex justify-center lg:justify-end">
-            <Card className="w-full max-w-md bg-white/10 backdrop-blur-xl border-white/20 shadow-2xl">
-              <CardHeader className="text-center space-y-4">
-                <CardTitle className="text-2xl text-white font-bold">
+            <Card className="w-full max-w-md bg-slate-800/90 backdrop-blur-md border-slate-700/50 shadow-md rounded-2xl">
+              <CardHeader className="text-center pb-4">
+                <CardTitle className="text-2xl text-white font-bold mb-2">
                   Welcome Back
                 </CardTitle>
-                <p className="text-gray-300">
+                <p className="text-sm text-gray-400">
                   Sign in to access your investment dashboard
                 </p>
               </CardHeader>
               
-              <CardContent>
+              <CardContent className="px-6 pb-6">
                 <Tabs defaultValue="login" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2 mb-6 bg-white/5">
-                    <TabsTrigger value="login" className="data-[state=active]:bg-emerald-500 data-[state=active]:text-white">
+                  <TabsList className="grid w-full grid-cols-2 mb-6 bg-slate-700/50 rounded-full p-1">
+                    <TabsTrigger 
+                      value="login" 
+                      className="data-[state=active]:bg-emerald-500 data-[state=active]:text-white rounded-full font-medium transition-all"
+                    >
                       Sign In
                     </TabsTrigger>
-                    <TabsTrigger value="register" className="data-[state=active]:bg-emerald-500 data-[state=active]:text-white">
+                    <TabsTrigger 
+                      value="register" 
+                      className="data-[state=active]:bg-emerald-500 data-[state=active]:text-white rounded-full font-medium transition-all"
+                    >
                       Sign Up
                     </TabsTrigger>
                   </TabsList>
@@ -374,20 +498,35 @@ const LoginPage = ({ onLogin }) => {
                     
                     <form onSubmit={handleMoonaLogin} className="space-y-4">
                       <div className="space-y-2">
-                        <Label htmlFor="login-email" className="text-gray-300">Email</Label>
+                        <Label htmlFor="login-email" className="text-gray-300 text-sm">Email</Label>
                         <Input
                           id="login-email"
                           type="email"
                           value={email}
-                          onChange={(e) => setEmail(e.target.value)}
+                          onChange={(e) => {
+                            setEmail(e.target.value);
+                            setEmailValid(true);
+                            setError('');
+                          }}
+                          onBlur={() => {
+                            if (email && !validateEmail(email)) {
+                              setEmailValid(false);
+                            }
+                          }}
                           placeholder="your.email@example.com"
                           required
-                          className="bg-white/10 border-white/20 text-white placeholder-gray-400"
+                          autoFocus
+                          className={`bg-white/10 border-white/20 text-white placeholder-gray-400 ${
+                            !emailValid ? 'border-red-500' : ''
+                          }`}
                         />
+                        {!emailValid && email && (
+                          <p className="text-xs text-red-400">Please enter a valid email address</p>
+                        )}
                       </div>
                       
                       <div className="space-y-2">
-                        <Label htmlFor="login-password" className="text-gray-300">Password</Label>
+                        <Label htmlFor="login-password" className="text-gray-300 text-sm">Password</Label>
                         <Input
                           id="login-password"
                           type="password"
@@ -395,27 +534,49 @@ const LoginPage = ({ onLogin }) => {
                           onChange={(e) => setPassword(e.target.value)}
                           placeholder="Enter your password"
                           required
-                          className="bg-white/10 border-white/20 text-white placeholder-gray-400"
+                          className="bg-slate-700/50 border-slate-600 text-white placeholder-gray-400 rounded-lg"
                         />
                       </div>
                       
                       <Button 
                         type="submit"
-                        disabled={isLoading}
-                        className="w-full h-12 bg-emerald-500 text-white hover:bg-emerald-600 disabled:opacity-50"
+                        disabled={isLoading || !email || !password}
+                        className="w-full h-12 bg-emerald-500 text-white hover:bg-emerald-600 disabled:opacity-50 transition-all duration-200"
                       >
-                        {isLoading ? 'Signing in...' : 'Sign In'}
+                        {isLoading ? (
+                          <span className="flex items-center">
+                            <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Signing in...
+                          </span>
+                        ) : showSuccess ? (
+                          <span className="flex items-center">
+                            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                            Success! Redirecting...
+                          </span>
+                        ) : (
+                          'Sign In'
+                        )}
                       </Button>
                     </form>
 
+                    {/* Trust Line */}
+                    <p className="text-xs text-gray-500 text-center mt-4 leading-relaxed">
+                      We use read-only connections for your brokerage accounts. Moona cannot move money or place trades.
+                    </p>
+
                     {isGoogleOAuthEnabled() && (
                       <>
-                        <div className="relative">
+                        <div className="relative my-6">
                           <div className="absolute inset-0 flex items-center">
-                            <span className="w-full border-t border-white/20"></span>
+                            <span className="w-full border-t border-slate-600"></span>
                           </div>
                           <div className="relative flex justify-center text-xs uppercase">
-                            <span className="bg-transparent px-2 text-gray-400">Or continue with</span>
+                            <span className="bg-slate-800 px-2 text-gray-400">Or continue with</span>
                           </div>
                         </div>
 
@@ -445,68 +606,139 @@ const LoginPage = ({ onLogin }) => {
                     
                     <form onSubmit={handleMoonaRegister} className="space-y-4">
                       <div className="space-y-2">
-                        <Label htmlFor="register-name" className="text-gray-300">Name (Optional)</Label>
+                        <Label htmlFor="register-name" className="text-gray-300 text-sm">Name (Optional)</Label>
                         <Input
                           id="register-name"
                           type="text"
                           value={name}
                           onChange={(e) => setName(e.target.value)}
                           placeholder="Your name"
-                          className="bg-white/10 border-white/20 text-white placeholder-gray-400"
+                          className="bg-slate-700/50 border-slate-600 text-white placeholder-gray-400 rounded-lg"
                         />
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="register-email" className="text-gray-300">Email</Label>
+                        <Label htmlFor="register-email" className="text-gray-300 text-sm">Email</Label>
                         <Input
                           id="register-email"
                           type="email"
                           value={email}
-                          onChange={(e) => setEmail(e.target.value)}
+                          onChange={(e) => {
+                            setEmail(e.target.value);
+                            setEmailValid(true);
+                            setError('');
+                          }}
+                          onBlur={() => {
+                            if (email && !validateEmail(email)) {
+                              setEmailValid(false);
+                            }
+                          }}
                           placeholder="your.email@example.com"
                           required
-                          className="bg-white/10 border-white/20 text-white placeholder-gray-400"
+                          autoFocus
+                          className={`bg-white/10 border-white/20 text-white placeholder-gray-400 ${
+                            !emailValid ? 'border-red-500' : ''
+                          }`}
                         />
+                        {!emailValid && email && (
+                          <p className="text-xs text-red-400">Please enter a valid email address</p>
+                        )}
                       </div>
                       
                       <div className="space-y-2">
-                        <Label htmlFor="register-password" className="text-gray-300">Password</Label>
+                        <Label htmlFor="register-password" className="text-gray-300 text-sm">Password</Label>
                         <Input
                           id="register-password"
                           type="password"
                           value={password}
-                          onChange={(e) => setPassword(e.target.value)}
+                          onChange={(e) => {
+                            setPassword(e.target.value);
+                            setError('');
+                          }}
                           placeholder="At least 6 characters"
                           required
                           minLength={6}
-                          className="bg-white/10 border-white/20 text-white placeholder-gray-400"
+                          className="bg-slate-700/50 border-slate-600 text-white placeholder-gray-400 rounded-lg"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && email && password && password.length >= 6) {
+                              handleMoonaRegister(e);
+                            }
+                          }}
                         />
+                        {password && (
+                          <div className="space-y-1">
+                            <div className="flex items-center space-x-2">
+                              <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
+                                <div 
+                                  className={`h-full transition-all duration-300 ${getPasswordStrengthColor()}`}
+                                  style={{ width: `${(passwordStrength / 5) * 100}%` }}
+                                />
+                              </div>
+                              <span className={`text-xs ${
+                                passwordStrength <= 1 ? 'text-red-400' :
+                                passwordStrength <= 2 ? 'text-orange-400' :
+                                passwordStrength <= 3 ? 'text-yellow-400' : 'text-emerald-400'
+                              }`}>
+                                {getPasswordStrengthText()}
+                              </span>
+                            </div>
+                            <div className="text-xs text-gray-500 space-y-0.5">
+                              {password.length < 6 && <div>• At least 6 characters</div>}
+                              {password.length >= 6 && password.length < 8 && <div>• 8+ characters recommended</div>}
+                              {!/[A-Z]/.test(password) && password && <div>• Add uppercase letters</div>}
+                              {!/\d/.test(password) && password && <div>• Add numbers</div>}
+                              {!/[^a-zA-Z\d]/.test(password) && password && <div>• Add special characters</div>}
+                            </div>
+                          </div>
+                        )}
                       </div>
                       
                       <Button 
                         type="submit"
-                        disabled={isLoading}
-                        className="w-full h-12 bg-emerald-500 text-white hover:bg-emerald-600 disabled:opacity-50"
+                        disabled={isLoading || !email || !password || password.length < 6}
+                        className="w-full h-12 bg-emerald-500 text-white hover:bg-emerald-600 disabled:opacity-50 transition-all duration-200"
                       >
-                        {isLoading ? 'Creating account...' : 'Create Account'}
+                        {isLoading ? (
+                          <span className="flex items-center">
+                            <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Creating account...
+                          </span>
+                        ) : showSuccess ? (
+                          <span className="flex items-center">
+                            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                            Success! Redirecting...
+                          </span>
+                        ) : (
+                          'Create Account'
+                        )}
                       </Button>
                     </form>
 
+                    {/* Trust Line */}
+                    <p className="text-xs text-gray-500 text-center mt-4 leading-relaxed">
+                      We use read-only connections for your brokerage accounts. Moona cannot move money or place trades.
+                    </p>
+
                     {isGoogleOAuthEnabled() && (
                       <>
-                        <div className="relative">
+                        <div className="relative my-6">
                           <div className="absolute inset-0 flex items-center">
-                            <span className="w-full border-t border-white/20"></span>
+                            <span className="w-full border-t border-slate-600"></span>
                           </div>
                           <div className="relative flex justify-center text-xs uppercase">
-                            <span className="bg-transparent px-2 text-gray-400">Or sign up with</span>
+                            <span className="bg-slate-800 px-2 text-gray-400">Or sign up with</span>
                           </div>
                         </div>
 
                         <Button 
                           onClick={handleGoogleLogin}
                           disabled={isLoading}
-                          className="w-full h-12 bg-white text-gray-900 hover:bg-gray-100 disabled:opacity-50 flex items-center justify-center"
+                          className="w-full h-12 bg-white text-gray-900 hover:bg-gray-100 disabled:opacity-50 flex items-center justify-center rounded-lg shadow-sm"
                         >
                           <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
                             <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>

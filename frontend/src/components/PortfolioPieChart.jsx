@@ -1,10 +1,33 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 
 const PortfolioPieChart = ({ holdings }) => {
-  const [selectedAssetTypes, setSelectedAssetTypes] = useState(new Set(['stock', 'crypto', 'roth_ira', 'etf', 'bond', 'other']));
+  // Initialize with all available asset types from holdings, or default set
+  const getInitialAssetTypes = () => {
+    if (!holdings || holdings.length === 0) {
+      return new Set(['stock', 'crypto', 'roth_ira', 'etf', 'bond', 'other']);
+    }
+    const types = new Set();
+    holdings.forEach(h => {
+      const type = (h.type || 'other').toLowerCase();
+      // Normalize type variations to match getAvailableAssetTypes
+      const normalizedType = type === 'cryptocurrency' ? 'crypto' : 
+                            type === 'stocks' ? 'stock' : 
+                            type === 'roth ira' ? 'roth_ira' : type;
+      types.add(normalizedType);
+      // Also add original if different (for backward compatibility)
+      if (normalizedType !== type) {
+        types.add(type);
+      }
+    });
+    // If no types found, use defaults
+    return types.size > 0 ? types : new Set(['stock', 'crypto', 'roth_ira', 'etf', 'bond', 'other']);
+  };
+  
+  const [selectedAssetTypes, setSelectedAssetTypes] = useState(() => getInitialAssetTypes());
+  const [selectedSegment, setSelectedSegment] = useState(null);
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-US', {
@@ -17,17 +40,26 @@ const PortfolioPieChart = ({ holdings }) => {
 
   // Get asset type color scheme
   const getAssetTypeColor = (assetType) => {
+    const normalized = assetType?.toLowerCase().replace(/\s+/g, '_');
     const colors = {
       'stock': '#059669',
       'stocks': '#059669',
       'crypto': '#dc2626',
+      'cryptocurrency': '#dc2626',
       'roth_ira': '#7c3aed',
       'roth ira': '#7c3aed',
       'etf': '#3b82f6',
       'bond': '#f59e0b',
+      '401k': '#10b981',
+      '529': '#06b6d4',
+      'child_roth': '#a855f7',
+      'childs_roth': '#a855f7',
+      'hsa': '#f97316',
+      'traditional_ira': '#6366f1',
+      'sep_ira': '#8b5cf6',
       'other': '#6b7280'
     };
-    return colors[assetType?.toLowerCase()] || colors['other'];
+    return colors[normalized] || colors['other'];
   };
 
   // Generate unique colors for all holdings (not grouped by asset type)
@@ -69,12 +101,34 @@ const PortfolioPieChart = ({ holdings }) => {
     const types = new Set();
     holdings.forEach(h => {
       const type = (h.type || 'other').toLowerCase();
-      types.add(type);
+      // Normalize type variations
+      const normalizedType = type === 'cryptocurrency' ? 'crypto' : 
+                            type === 'stocks' ? 'stock' : 
+                            type === 'roth ira' ? 'roth_ira' : type;
+      types.add(normalizedType);
+      // Also keep original in case it's different
+      if (normalizedType !== type) {
+        types.add(type);
+      }
     });
     return Array.from(types).sort();
   };
 
   const availableAssetTypes = getAvailableAssetTypes();
+  
+  // Update selected types when holdings change to include all available types
+  useEffect(() => {
+    if (availableAssetTypes.length > 0) {
+      setSelectedAssetTypes(prev => {
+        const newSet = new Set(prev);
+        // Add any new asset types that appear in holdings
+        availableAssetTypes.forEach(type => {
+          newSet.add(type);
+        });
+        return newSet;
+      });
+    }
+  }, [availableAssetTypes.join(',')]);
 
   const toggleAssetType = (assetType) => {
     setSelectedAssetTypes(prev => {
@@ -95,13 +149,22 @@ const PortfolioPieChart = ({ holdings }) => {
     // Filter by selected asset types
     const filteredHoldings = holdings.filter(h => {
       const type = (h.type || 'other').toLowerCase();
-      return selectedAssetTypes.has(type);
+      // Normalize type variations
+      const normalizedType = type === 'cryptocurrency' ? 'crypto' : 
+                            type === 'stocks' ? 'stock' : 
+                            type === 'roth ira' ? 'roth_ira' : type;
+      return selectedAssetTypes.has(normalizedType) || selectedAssetTypes.has(type);
     });
 
     if (filteredHoldings.length === 0) return [];
 
     const totalValue = filteredHoldings.reduce((sum, h) => sum + (h.total_value || 0), 0);
     if (totalValue === 0) return [];
+    
+    // Debug logging
+    console.log('PortfolioPieChart - Filtered holdings:', filteredHoldings.length);
+    console.log('PortfolioPieChart - Selected asset types:', Array.from(selectedAssetTypes));
+    console.log('PortfolioPieChart - Total value:', totalValue);
 
     return filteredHoldings
       .map((holding) => {
@@ -167,9 +230,19 @@ const PortfolioPieChart = ({ holdings }) => {
   let cumulativePercentage = 0;
 
   // Generate segments with label positions
+  // Handle single asset case - make it a full circle
   const segments = portfolioData.map((item) => {
-    const startAngle = (cumulativePercentage / 100) * 360;
-    const endAngle = ((cumulativePercentage + item.percentage) / 100) * 360;
+    let startAngle, endAngle;
+    
+    if (portfolioData.length === 1) {
+      // Single asset: full circle
+      startAngle = 0;
+      endAngle = 360;
+    } else {
+      startAngle = (cumulativePercentage / 100) * 360;
+      endAngle = ((cumulativePercentage + item.percentage) / 100) * 360;
+    }
+    
     const midAngle = (startAngle + endAngle) / 2;
     
     const startAngleRad = ((startAngle - 90) * Math.PI) / 180;
@@ -182,7 +255,8 @@ const PortfolioPieChart = ({ holdings }) => {
     const x2 = centerX + radius * Math.cos(endAngleRad);
     const y2 = centerY + radius * Math.sin(endAngleRad);
     
-    const largeArcFlag = item.percentage > 50 ? 1 : 0;
+    // For single asset (full circle), use large arc flag
+    const largeArcFlag = portfolioData.length === 1 ? 1 : (item.percentage > 50 ? 1 : 0);
     
     const pathData = [
       `M ${centerX} ${centerY}`,
@@ -219,9 +293,76 @@ const PortfolioPieChart = ({ holdings }) => {
     };
   });
 
-  // Split labels into left and right and adjust positions to prevent crowding
-  const leftLabels = segments.filter(s => s.isLeft).sort((a, b) => a.labelPosY - b.labelPosY);
-  const rightLabels = segments.filter(s => !s.isLeft).sort((a, b) => a.labelPosY - b.labelPosY);
+  // Split labels into left and right initially
+  let leftLabels = segments.filter(s => s.isLeft).sort((a, b) => a.labelPosY - b.labelPosY);
+  let rightLabels = segments.filter(s => !s.isLeft).sort((a, b) => a.labelPosY - b.labelPosY);
+  
+  // Balance distribution between left and right sides
+  const balanceLabelDistribution = () => {
+    const totalLabels = segments.length;
+    const targetPerSide = Math.ceil(totalLabels / 2);
+    const leftCount = leftLabels.length;
+    const rightCount = rightLabels.length;
+    
+    // If distribution is already balanced (difference <= 1), return early
+    if (Math.abs(leftCount - rightCount) <= 1) {
+      return;
+    }
+    
+    // Determine which side needs more labels
+    if (leftCount > rightCount) {
+      // Move labels from left to right
+      const labelsToMove = leftCount - targetPerSide;
+      // Sort left labels by distance from center (closest to center first)
+      const sortedByDistance = [...leftLabels].sort((a, b) => {
+        const distA = Math.abs(a.labelX - centerX);
+        const distB = Math.abs(b.labelX - centerX);
+        return distA - distB;
+      });
+      
+      // Move the labels closest to center to the right side
+      const labelsMoving = sortedByDistance.slice(0, labelsToMove);
+      const labelsStaying = sortedByDistance.slice(labelsToMove);
+      
+      // Update isLeft property for moved labels
+      labelsMoving.forEach(label => {
+        label.isLeft = false;
+        label.labelOffsetX = 140; // Right side offset
+        label.labelPosX = label.labelX + 140;
+      });
+      
+      // Re-sort both sides
+      leftLabels = labelsStaying.sort((a, b) => a.labelPosY - b.labelPosY);
+      rightLabels = [...rightLabels, ...labelsMoving].sort((a, b) => a.labelPosY - b.labelPosY);
+    } else {
+      // Move labels from right to left
+      const labelsToMove = rightCount - targetPerSide;
+      // Sort right labels by distance from center (closest to center first)
+      const sortedByDistance = [...rightLabels].sort((a, b) => {
+        const distA = Math.abs(a.labelX - centerX);
+        const distB = Math.abs(b.labelX - centerX);
+        return distA - distB;
+      });
+      
+      // Move the labels closest to center to the left side
+      const labelsMoving = sortedByDistance.slice(0, labelsToMove);
+      const labelsStaying = sortedByDistance.slice(labelsToMove);
+      
+      // Update isLeft property for moved labels
+      labelsMoving.forEach(label => {
+        label.isLeft = true;
+        label.labelOffsetX = -140; // Left side offset
+        label.labelPosX = label.labelX - 140;
+      });
+      
+      // Re-sort both sides
+      rightLabels = labelsStaying.sort((a, b) => a.labelPosY - b.labelPosY);
+      leftLabels = [...leftLabels, ...labelsMoving].sort((a, b) => a.labelPosY - b.labelPosY);
+    }
+  };
+  
+  // Apply balancing
+  balanceLabelDistribution();
 
   // Adjust label positions to prevent crowding with better spacing
   const adjustLabelPositions = (labels) => {
@@ -258,13 +399,29 @@ const PortfolioPieChart = ({ holdings }) => {
       'stock': 'Stocks',
       'stocks': 'Stocks',
       'crypto': 'Crypto',
+      'cryptocurrency': 'Crypto',
       'roth_ira': 'Roth IRA',
       'roth ira': 'Roth IRA',
       'etf': 'ETF',
       'bond': 'Bonds',
+      '401k': '401(k)',
+      '529': '529 Plan',
+      'child_roth': "Child's Roth IRA",
+      'childs_roth': "Child's Roth IRA",
+      'hsa': 'HSA',
+      'traditional_ira': 'Traditional IRA',
+      'sep_ira': 'SEP IRA',
       'other': 'Other'
     };
-    return names[type?.toLowerCase()] || type.charAt(0).toUpperCase() + type.slice(1);
+    const normalized = type?.toLowerCase().replace(/\s+/g, '_');
+    if (names[normalized]) {
+      return names[normalized];
+    }
+    // Format custom types nicely (e.g., "child_roth" -> "Child Roth")
+    return type
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
   };
 
   return (
@@ -286,7 +443,12 @@ const PortfolioPieChart = ({ holdings }) => {
         </div>
         <div className="flex flex-wrap gap-2">
           {availableAssetTypes.map((type) => {
-            const isSelected = selectedAssetTypes.has(type);
+            // Normalize the asset type for comparison
+            const normalizedType = type === 'cryptocurrency' ? 'crypto' : 
+                                   type === 'stocks' ? 'stock' : 
+                                   type === 'roth ira' ? 'roth_ira' : type;
+            // Check if either the original or normalized type is selected
+            const isSelected = selectedAssetTypes.has(type) || selectedAssetTypes.has(normalizedType);
             return (
               <Badge
                 key={type}
@@ -300,7 +462,13 @@ const PortfolioPieChart = ({ holdings }) => {
                   backgroundColor: getAssetTypeColor(type),
                   borderColor: getAssetTypeColor(type)
                 } : {}}
-                onClick={() => toggleAssetType(type)}
+                onClick={() => {
+                  // Toggle both the original and normalized type to ensure consistency
+                  toggleAssetType(type);
+                  if (normalizedType !== type) {
+                    toggleAssetType(normalizedType);
+                  }
+                }}
               >
                 {formatAssetTypeName(type)}
                 {!isSelected && <X className="w-3 h-3 ml-1" />}
@@ -314,42 +482,50 @@ const PortfolioPieChart = ({ holdings }) => {
         <div className="flex items-center justify-center w-full">
           <svg width={size} height={size} className="drop-shadow-2xl flex-shrink-0">
           {/* Pie slices */}
-          {segments.map((segment, index) => (
-            <g key={index}>
-              <path
-                d={segment.pathData}
-                fill={segment.color}
-                stroke="white"
-                strokeWidth="3"
-                className="hover:opacity-90 hover:brightness-110 transition-all duration-200 cursor-pointer"
-                style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))' }}
-              />
-              
-              {/* Connecting line from pie to label - will be adjusted per label */}
-              <line
-                x1={segment.labelX}
-                y1={segment.labelY}
-                x2={segment.labelPosX}
-                y2={segment.labelPosY}
-                stroke="#cbd5e1"
-                strokeWidth="1.5"
-                strokeDasharray="3,3"
-                opacity="0.4"
-                className="transition-opacity duration-200"
-              />
-              
-              {/* Connection point on pie */}
-              <circle
-                cx={segment.labelX}
-                cy={segment.labelY}
-                r="4"
-                fill={segment.color}
-                stroke="white"
-                strokeWidth="2"
-                opacity="0.9"
-              />
-            </g>
-          ))}
+          {segments.map((segment, index) => {
+            const isSelected = selectedSegment === segment.symbol;
+            return (
+              <g key={index}>
+                <path
+                  d={segment.pathData}
+                  fill={segment.color}
+                  stroke={isSelected ? "#1e40af" : "white"}
+                  strokeWidth={isSelected ? "5" : "3"}
+                  className="hover:opacity-90 hover:brightness-110 transition-all duration-200 cursor-pointer"
+                  style={{ 
+                    filter: isSelected ? 'drop-shadow(0 4px 8px rgba(30, 64, 175, 0.4)) brightness(1.2)' : 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))',
+                    opacity: isSelected ? 1 : (selectedSegment && selectedSegment !== segment.symbol ? 0.5 : 1)
+                  }}
+                  onClick={() => setSelectedSegment(isSelected ? null : segment.symbol)}
+                />
+                
+                {/* Connecting line from pie to label - adjusted for balanced distribution */}
+                <line
+                  x1={segment.labelX}
+                  y1={segment.labelY}
+                  x2={segment.isLeft ? segment.labelX - 140 : segment.labelX + 140}
+                  y2={segment.labelPosY}
+                  stroke={isSelected ? "#3b82f6" : "#cbd5e1"}
+                  strokeWidth={isSelected ? "2.5" : "1.5"}
+                  strokeDasharray={isSelected ? "0" : "3,3"}
+                  opacity={isSelected ? "0.8" : "0.4"}
+                  className="transition-all duration-200"
+                />
+                
+                {/* Connection point on pie */}
+                <circle
+                  cx={segment.labelX}
+                  cy={segment.labelY}
+                  r={isSelected ? "6" : "4"}
+                  fill={segment.color}
+                  stroke={isSelected ? "#1e40af" : "white"}
+                  strokeWidth={isSelected ? "3" : "2"}
+                  opacity={isSelected ? 1 : 0.9}
+                  className="transition-all duration-200"
+                />
+              </g>
+            );
+          })}
         </svg>
         </div>
 
@@ -359,6 +535,7 @@ const PortfolioPieChart = ({ holdings }) => {
             const displayY = segment.adjustedY || segment.labelPosY;
             const totalHeight = size;
             const normalizedY = ((displayY / totalHeight) * 100);
+            const isSelected = selectedSegment === segment.symbol;
             
             return (
               <div
@@ -371,24 +548,37 @@ const PortfolioPieChart = ({ holdings }) => {
                   width: '100%',
                   maxWidth: '220px',
                   padding: '2px 0',
-                  zIndex: 10
+                  zIndex: isSelected ? 50 : 10
                 }}
+                onClick={() => setSelectedSegment(isSelected ? null : segment.symbol)}
               >
                 <div 
-                  className="text-right pr-3 bg-white/95 backdrop-blur-sm rounded-lg px-3 py-2.5 shadow-sm group-hover:shadow-xl group-hover:bg-white transition-all duration-200 border border-gray-200 group-hover:border-gray-300 flex-shrink min-w-0 relative"
-                  style={{ zIndex: 10 }}
-                  onMouseEnter={(e) => e.currentTarget.style.zIndex = '50'}
-                  onMouseLeave={(e) => e.currentTarget.style.zIndex = '10'}
+                  className={`text-right pr-3 backdrop-blur-sm rounded-lg px-3 py-2.5 shadow-sm group-hover:shadow-xl transition-all duration-200 flex-shrink min-w-0 relative cursor-pointer ${
+                    isSelected 
+                      ? 'bg-blue-50 border-2 border-blue-500 shadow-lg scale-105' 
+                      : 'bg-white/95 border border-gray-200 group-hover:bg-white group-hover:border-gray-300'
+                  }`}
+                  style={{ zIndex: isSelected ? 50 : 10 }}
+                  onMouseEnter={(e) => !isSelected && (e.currentTarget.style.zIndex = '50')}
+                  onMouseLeave={(e) => !isSelected && (e.currentTarget.style.zIndex = '10')}
                 >
                   <div className="flex items-center justify-end gap-2 flex-wrap">
-                    <div className="text-sm font-bold text-gray-900 leading-tight break-words max-w-[120px]" style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+                    <div className={`text-sm font-bold leading-tight break-words max-w-[120px] ${
+                      isSelected ? 'text-blue-900' : 'text-gray-900'
+                    }`} style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                       {segment.symbol}
                     </div>
-                    <div className="text-xs font-semibold text-gray-700 bg-gray-100 group-hover:bg-gray-200 px-1.5 py-0.5 rounded inline-block flex-shrink-0">{segment.percentage.toFixed(1)}%</div>
+                    <div className={`text-xs font-semibold px-1.5 py-0.5 rounded inline-block flex-shrink-0 ${
+                      isSelected 
+                        ? 'bg-blue-200 text-blue-900' 
+                        : 'text-gray-700 bg-gray-100 group-hover:bg-gray-200'
+                    }`}>{segment.percentage.toFixed(1)}%</div>
                   </div>
                 </div>
                 <div
-                  className="w-5 h-5 rounded-lg flex-shrink-0 border-2 border-white shadow-md group-hover:scale-110 group-hover:shadow-lg transition-all duration-200 ml-2 relative"
+                  className={`rounded-lg flex-shrink-0 border-2 shadow-md group-hover:scale-110 group-hover:shadow-lg transition-all duration-200 ml-2 relative ${
+                    isSelected ? 'w-6 h-6 border-blue-500 scale-110 shadow-lg' : 'w-5 h-5 border-white'
+                  }`}
                   style={{ backgroundColor: segment.color, zIndex: 20 }}
                 />
               </div>
@@ -402,6 +592,7 @@ const PortfolioPieChart = ({ holdings }) => {
             const displayY = segment.adjustedY || segment.labelPosY;
             const totalHeight = size;
             const normalizedY = ((displayY / totalHeight) * 100);
+            const isSelected = selectedSegment === segment.symbol;
             
             return (
               <div
@@ -414,24 +605,37 @@ const PortfolioPieChart = ({ holdings }) => {
                   width: '100%',
                   maxWidth: '220px',
                   padding: '2px 0',
-                  zIndex: 10
+                  zIndex: isSelected ? 50 : 10
                 }}
+                onClick={() => setSelectedSegment(isSelected ? null : segment.symbol)}
               >
                 <div
-                  className="w-5 h-5 rounded-lg flex-shrink-0 mr-2 border-2 border-white shadow-md group-hover:scale-110 group-hover:shadow-lg transition-all duration-200 relative"
+                  className={`rounded-lg flex-shrink-0 border-2 shadow-md group-hover:scale-110 group-hover:shadow-lg transition-all duration-200 mr-2 relative ${
+                    isSelected ? 'w-6 h-6 border-blue-500 scale-110 shadow-lg' : 'w-5 h-5 border-white'
+                  }`}
                   style={{ backgroundColor: segment.color, zIndex: 20 }}
                 />
                 <div 
-                  className="text-left bg-white/95 backdrop-blur-sm rounded-lg px-3 py-2.5 shadow-sm group-hover:shadow-xl group-hover:bg-white transition-all duration-200 border border-gray-200 group-hover:border-gray-300 flex-shrink min-w-0 relative"
-                  style={{ zIndex: 10 }}
-                  onMouseEnter={(e) => e.currentTarget.style.zIndex = '50'}
-                  onMouseLeave={(e) => e.currentTarget.style.zIndex = '10'}
+                  className={`text-left backdrop-blur-sm rounded-lg px-3 py-2.5 shadow-sm group-hover:shadow-xl transition-all duration-200 flex-shrink min-w-0 relative cursor-pointer ${
+                    isSelected 
+                      ? 'bg-blue-50 border-2 border-blue-500 shadow-lg scale-105' 
+                      : 'bg-white/95 border border-gray-200 group-hover:bg-white group-hover:border-gray-300'
+                  }`}
+                  style={{ zIndex: isSelected ? 50 : 10 }}
+                  onMouseEnter={(e) => !isSelected && (e.currentTarget.style.zIndex = '50')}
+                  onMouseLeave={(e) => !isSelected && (e.currentTarget.style.zIndex = '10')}
                 >
                   <div className="flex items-center justify-start gap-2 flex-wrap">
-                    <div className="text-sm font-bold text-gray-900 leading-tight break-words max-w-[120px]" style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+                    <div className={`text-sm font-bold leading-tight break-words max-w-[120px] ${
+                      isSelected ? 'text-blue-900' : 'text-gray-900'
+                    }`} style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                       {segment.symbol}
                     </div>
-                    <div className="text-xs font-semibold text-gray-700 bg-gray-100 group-hover:bg-gray-200 px-1.5 py-0.5 rounded inline-block flex-shrink-0">{segment.percentage.toFixed(1)}%</div>
+                    <div className={`text-xs font-semibold px-1.5 py-0.5 rounded inline-block flex-shrink-0 ${
+                      isSelected 
+                        ? 'bg-blue-200 text-blue-900' 
+                        : 'text-gray-700 bg-gray-100 group-hover:bg-gray-200'
+                    }`}>{segment.percentage.toFixed(1)}%</div>
                   </div>
                 </div>
               </div>

@@ -8,6 +8,7 @@ import { useAuth } from './AuthProvider';
 import MoonaLogo from './MoonaLogo';
 
 const Navbar = () => {
+  // Slimmer navbar - 56-64px height
   const { user, logout } = useAuth();
 
   const handleLogout = () => {
@@ -15,23 +16,22 @@ const Navbar = () => {
   };
 
   return (
-    <div className="sticky top-0 z-50 bg-white/80 backdrop-blur-lg border-b border-gray-200/50 shadow-sm">
-      {/* Coming Soon Banner */}
-      <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-white py-2">
+    <div className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-200 shadow-sm">
+      {/* Slim Announcement Banner */}
+      <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-200/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-center space-x-2">
-            <Sparkles className="w-4 h-4 animate-pulse" />
-            <span className="text-sm font-medium">
-              🥇 Gold & Silver tracking coming soon! 🥈 Enhanced precious metals portfolio management
+          <div className="flex items-center justify-center py-1.5">
+            <Sparkles className="w-3 h-3 text-amber-600 mr-2" />
+            <span className="text-xs font-medium text-amber-800">
+              ⚙️ Gold & Silver tracking coming soon · Enhanced portfolio tagging in beta
             </span>
-            <Sparkles className="w-4 h-4 animate-pulse" />
           </div>
         </div>
       </div>
 
-      {/* Main Navbar */}
+      {/* Main Navbar - Slim (56-64px) */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center py-4">
+        <div className="flex justify-between items-center h-14">
           {/* Logo */}
           <MoonaLogo size="md" showTagline={true} />
 

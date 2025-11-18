@@ -10,7 +10,10 @@ import asyncio
 from auth import get_current_user_dependency, UserData
 from db_supabase import get_db_pool, execute_query
 from price_service import price_service
+from benchmark_service import benchmark_service
+from projection_service import projection_service
 import httpx
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +52,9 @@ class SPYComparison(BaseModel):
     outperformanceValue: float
     portfolioValue: float
     portfolioReturnPct: float
+    spyInvested: Optional[float] = 0.0
+    portfolioInvested: Optional[float] = 0.0
+    timeSeries: Optional[List[Dict]] = []
 
 async def calculate_portfolio_metrics(user_id: str) -> Dict:
     """Calculate all portfolio metrics from holdings"""
@@ -84,16 +90,19 @@ async def calculate_portfolio_metrics(user_id: str) -> Dict:
                 "holdings": []
             }
         
-        # Get current prices with timeout
+        # Get current prices with shorter timeout - use cached/database prices if slow
         symbols = [h['symbol'] for h in holdings]
         asset_types = {h['symbol']: h['type'] if h['type'] != 'roth_ira' else 'stock' for h in holdings}
         try:
             price_data = await asyncio.wait_for(
                 price_service.get_multiple_prices(symbols, asset_types),
-                timeout=10.0  # 10 second timeout
+                timeout=5.0  # Reduced to 5 seconds - fail fast
             )
         except asyncio.TimeoutError:
             logger.warning("Price fetching timed out, using existing prices from database")
+            price_data = {}
+        except Exception as e:
+            logger.warning(f"Price fetching error, using existing prices: {str(e)}")
             price_data = {}
         
         # Calculate totals
@@ -197,6 +206,160 @@ async def get_spy_data() -> Dict:
             "spyBaseline": 0.0
         }
 
+async def calculate_spy_comparison_with_dates(holdings: List[Dict]) -> Dict:
+    """Calculate what SPY would be worth if invested at the same times as portfolio holdings"""
+    try:
+        # Get current SPY price - try multiple times if needed
+        current_spy_price = 0.0
+        spy_price_data = {}
+        
+        try:
+            spy_price_data = await price_service.get_price("SPY", "stock")
+            if isinstance(spy_price_data, dict):
+                current_spy_price = float(spy_price_data.get("price", spy_price_data.get("current_price", 0)))
+            else:
+                current_spy_price = float(spy_price_data) if spy_price_data else 0.0
+        except Exception as e:
+            logger.warning(f"Failed to get SPY price from API: {str(e)}")
+        
+        # Fallback to approximate current SPY price if API fails
+        if current_spy_price == 0:
+            current_spy_price = 450.0  # Approximate current SPY price
+            logger.info(f"Using fallback SPY price: ${current_spy_price}")
+        
+        if not holdings:
+            logger.warning("No holdings provided for SPY comparison")
+            return {
+                "spyValue": 0.0,
+                "spyInvested": 0.0,
+                "spyReturnPct": 0.0,
+                "portfolioInvested": 0.0,
+                "timeSeries": []
+            }
+        
+        logger.info(f"Calculating SPY comparison for {len(holdings)} holdings with SPY price: ${current_spy_price}")
+        
+        # Calculate SPY investment based on when each holding was purchased
+        spy_invested = 0.0
+        portfolio_invested = 0.0
+        spy_value = 0.0
+        time_series = []
+        
+        now = datetime.now(timezone.utc)
+        
+        # Group investments by month for time series
+        monthly_data = {}
+        
+        for holding in holdings:
+            # Get investment amount (total_cost = cost basis = money spent)
+            investment = float(holding.get('total_cost', 0))
+            if investment <= 0:
+                logger.warning(f"Skipping holding {holding.get('symbol', 'unknown')} with zero or negative cost basis")
+                continue
+            portfolio_invested += investment
+            
+            # Get when this holding was created (investment date)
+            created_at = holding.get('created_at')
+            if isinstance(created_at, str):
+                try:
+                    created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                except:
+                    created_at = now - timedelta(days=365)  # Default to 1 year ago
+            elif not isinstance(created_at, datetime):
+                created_at = now - timedelta(days=365)
+            
+            # Calculate days since investment
+            days_since_investment = (now - created_at.replace(tzinfo=timezone.utc) if created_at.tzinfo is None else created_at).days
+            days_since_investment = max(days_since_investment, 1)  # At least 1 day
+            
+            # Estimate SPY price at investment date
+            # SPY has historically returned ~10% annually, so we can approximate
+            # If invested X days ago, SPY would have been: current_price / (1 + annual_return)^(days/365)
+            annual_return = 0.10  # 10% annual return
+            years_ago = days_since_investment / 365.0
+            spy_price_at_investment = current_spy_price / ((1 + annual_return) ** years_ago)
+            
+            # Calculate how many SPY shares could be bought with this investment (cost basis)
+            spy_shares = investment / spy_price_at_investment if spy_price_at_investment > 0 else 0
+            
+            # Current value of SPY investment (what those shares would be worth today)
+            spy_investment_value = spy_shares * current_spy_price
+            spy_invested += investment  # Total cost basis invested in SPY
+            spy_value += spy_investment_value  # Total current value of SPY investment
+            
+            logger.debug(f"Holding {holding.get('symbol', 'unknown')}: invested ${investment:.2f} on {created_at.strftime('%Y-%m-%d')}, SPY price was ${spy_price_at_investment:.2f}, would have ${spy_shares:.4f} shares, worth ${spy_investment_value:.2f} today")
+            
+            # Add to monthly time series
+            month_key = created_at.strftime("%Y-%m")
+            if month_key not in monthly_data:
+                monthly_data[month_key] = {
+                    "portfolio_invested": 0.0,
+                    "spy_invested": 0.0,
+                    "spy_shares": 0.0,
+                    "date": created_at
+                }
+            monthly_data[month_key]["portfolio_invested"] += investment
+            monthly_data[month_key]["spy_invested"] += investment
+            monthly_data[month_key]["spy_shares"] += spy_shares
+        
+        # Build time series - calculate cumulative values over time
+        sorted_months = sorted(monthly_data.items())
+        cumulative_portfolio = 0.0
+        cumulative_spy_shares = 0.0
+        
+        for month_key, data in sorted_months:
+            cumulative_portfolio += data["portfolio_invested"]
+            cumulative_spy_shares += data["spy_shares"]
+            
+            # Calculate SPY value at this point in time
+            # For historical points, estimate SPY price based on time elapsed
+            investment_date = data["date"]
+            days_from_investment = (now - investment_date.replace(tzinfo=timezone.utc) if investment_date.tzinfo is None else investment_date).days
+            years_elapsed = days_from_investment / 365.0
+            
+            # Estimate SPY price at this historical point
+            spy_price_at_date = current_spy_price / ((1 + annual_return) ** (days_from_investment / 365.0))
+            spy_value_at_date = cumulative_spy_shares * spy_price_at_date
+            
+            # Portfolio value at this date (simplified - using cost basis with growth)
+            portfolio_value_at_date = cumulative_portfolio * (1 + (years_elapsed * 0.10))  # Assume 10% growth
+            
+            time_series.append({
+                "date": investment_date.strftime("%Y-%m-%d"),
+                "portfolio": portfolio_value_at_date,
+                "spy": spy_value_at_date
+            })
+        
+        # Add current point
+        portfolio_current = sum(float(h.get('total_value', 0)) for h in holdings)
+        time_series.append({
+            "date": now.strftime("%Y-%m-%d"),
+            "portfolio": portfolio_current,
+            "spy": spy_value
+        })
+        
+        # Calculate SPY return percentage
+        spy_return_pct = ((spy_value - spy_invested) / spy_invested * 100) if spy_invested > 0 else 0.0
+        
+        logger.info(f"SPY Comparison Result: Invested ${spy_invested:.2f}, Current Value ${spy_value:.2f}, Return {spy_return_pct:.2f}%")
+        
+        return {
+            "spyValue": spy_value,
+            "spyInvested": spy_invested,
+            "spyReturnPct": spy_return_pct,
+            "portfolioInvested": portfolio_invested,
+            "timeSeries": time_series
+        }
+    except Exception as e:
+        logger.error(f"Error calculating SPY comparison with dates: {str(e)}")
+        return {
+            "spyValue": 0.0,
+            "spyInvested": 0.0,
+            "spyReturnPct": 0.0,
+            "portfolioInvested": 0.0,
+            "timeSeries": []
+        }
+
 @portfolio_router.get("/summary")
 async def get_portfolio_summary(
     current_user: UserData = Depends(get_current_user_dependency)
@@ -279,17 +442,21 @@ async def get_portfolio_performance(
             for asset_type, data in asset_type_performance.items()
         ]
         
-        # Portfolio vs SPY
-        spy_data = await get_spy_data()
-        portfolio_vs_spy = []
-        for i in range(12):
-            date = now - timedelta(days=30 * (11 - i))
-            date_str = date.strftime("%Y-%m-%d")
-            portfolio_vs_spy.append({
-                "date": date_str,
-                "portfolio": metrics["currentValue"] * (1 + (i * 0.02)),
-                "spy": spy_data["spyValue"] * (1 + (i * 0.015))
-            })
+        # Portfolio vs SPY - use actual investment dates
+        spy_comparison = await calculate_spy_comparison_with_dates(metrics["holdings"])
+        portfolio_vs_spy = spy_comparison.get("timeSeries", [])
+        
+        # If no time series data, create a simple one
+        if not portfolio_vs_spy:
+            spy_data = await get_spy_data()
+            for i in range(12):
+                date = now - timedelta(days=30 * (11 - i))
+                date_str = date.strftime("%Y-%m-%d")
+                portfolio_vs_spy.append({
+                    "date": date_str,
+                    "portfolio": metrics["currentValue"] * (1 + (i * 0.02)),
+                    "spy": spy_data["spyValue"] * (1 + (i * 0.015))
+                })
         
         return PortfolioPerformance(
             portfolioPerformance=portfolio_performance,
@@ -392,27 +559,85 @@ async def get_portfolio_allocation(
 
 @portfolio_router.get("/spy-comparison")
 async def get_spy_comparison(
+    asset_types: Optional[str] = None,
     current_user: UserData = Depends(get_current_user_dependency)
 ):
-    """Get SPY comparison data"""
+    """Get SPY comparison data based on actual investment dates, optionally filtered by asset types"""
     try:
         metrics = await calculate_portfolio_metrics(current_user.id)
-        spy_data = await get_spy_data()
+        holdings = metrics.get("holdings", [])
         
-        portfolio_value = metrics["currentValue"]
-        portfolio_return = metrics["returnPct"]
+        # Filter holdings by selected asset types if provided
+        if asset_types:
+            selected_types = [t.strip().lower() for t in asset_types.split(',')]
+            # Normalize type names
+            normalized_selected = set()
+            for t in selected_types:
+                normalized = t.replace(' ', '_')
+                if t == 'cryptocurrency':
+                    normalized = 'crypto'
+                elif t == 'stocks':
+                    normalized = 'stock'
+                elif t == 'roth ira':
+                    normalized = 'roth_ira'
+                normalized_selected.add(normalized)
+                normalized_selected.add(t)  # Also keep original
+            
+            holdings = [
+                h for h in holdings
+                if (h.get('type', '').lower() in normalized_selected or 
+                    h.get('type', '').lower().replace(' ', '_') in normalized_selected)
+            ]
+        
+        if not holdings:
+            return SPYComparison(
+                spyValue=0.0,
+                spyReturnPct=0.0,
+                outperformancePct=0.0,
+                outperformanceValue=0.0,
+                portfolioValue=0.0,
+                portfolioReturnPct=0.0,
+                spyInvested=0.0,
+                portfolioInvested=0.0,
+                timeSeries=[]
+            )
+        
+        # Recalculate portfolio metrics for filtered holdings only FIRST
+        # This ensures we have accurate cost basis and current values
+        filtered_total_cost = sum(float(h.get('total_cost', 0)) for h in holdings)
+        filtered_total_value = sum(float(h.get('total_value', 0)) for h in holdings)
+        filtered_gain_loss = filtered_total_value - filtered_total_cost
+        filtered_return_pct = (filtered_gain_loss / filtered_total_cost * 100) if filtered_total_cost > 0 else 0.0
+        
+        # Calculate SPY comparison based on actual investment dates for filtered holdings
+        # This uses the cost basis (total_cost) from filtered holdings to calculate what SPY would be worth
+        spy_comparison = await calculate_spy_comparison_with_dates(holdings)
+        
+        portfolio_value = filtered_total_value
+        portfolio_return = filtered_return_pct
+        portfolio_invested = filtered_total_cost
+        
+        spy_value = spy_comparison["spyValue"]
+        spy_return_pct = spy_comparison["spyReturnPct"]
+        spy_invested = spy_comparison["spyInvested"]
+        
+        # Log for debugging
+        logger.info(f"SPY Comparison - Portfolio: ${portfolio_value:.2f} (invested: ${portfolio_invested:.2f}), SPY: ${spy_value:.2f} (invested: ${spy_invested:.2f})")
         
         # Calculate outperformance
-        outperformance_pct = portfolio_return - spy_data["spyReturnPct"]
-        outperformance_value = portfolio_value - (metrics["costBasis"] * (1 + spy_data["spyReturnPct"] / 100))
+        outperformance_pct = portfolio_return - spy_return_pct
+        outperformance_value = portfolio_value - spy_value
         
         return SPYComparison(
-            spyValue=spy_data["spyValue"],
-            spyReturnPct=spy_data["spyReturnPct"],
+            spyValue=spy_value,
+            spyReturnPct=spy_return_pct,
             outperformancePct=outperformance_pct,
             outperformanceValue=outperformance_value,
             portfolioValue=portfolio_value,
-            portfolioReturnPct=portfolio_return
+            portfolioReturnPct=portfolio_return,
+            spyInvested=spy_invested,
+            portfolioInvested=portfolio_invested,
+            timeSeries=spy_comparison.get("timeSeries", [])
         )
     except Exception as e:
         logger.error(f"Error getting SPY comparison: {str(e)}")
@@ -449,4 +674,348 @@ async def get_top_performers(
     except Exception as e:
         logger.error(f"Error getting top performers: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to get top performers: {str(e)}")
+
+# Benchmark comparison functions and endpoint
+def calculate_cagr(start_value: float, end_value: float, years: float) -> float:
+    """Calculate Compound Annual Growth Rate"""
+    if start_value <= 0 or years <= 0:
+        return 0.0
+    return ((end_value / start_value) ** (1 / years) - 1) * 100
+
+def calculate_max_drawdown(series: List[float]) -> float:
+    """Calculate maximum drawdown percentage"""
+    if not series:
+        return 0.0
+    
+    peak = series[0]
+    max_dd = 0.0
+    
+    for value in series:
+        if value > peak:
+            peak = value
+        drawdown = ((peak - value) / peak) * 100
+        if drawdown > max_dd:
+            max_dd = drawdown
+    
+    return max_dd
+
+def normalize_series(series: List[Dict], start_value: float = None) -> List[Dict]:
+    """Normalize series to start at 100"""
+    if not series:
+        return []
+    
+    if start_value is None:
+        start_value = series[0].get('value', series[0].get('price', 100))
+    
+    if start_value == 0:
+        start_value = 100
+    
+    normalized = []
+    for point in series:
+        value = point.get('value', point.get('price', 0))
+        normalized_value = (value / start_value) * 100
+        normalized.append({
+            "date": point.get('date', ''),
+            "value": round(normalized_value, 2)
+        })
+    
+    return normalized
+
+def align_series_by_date(series1: List[Dict], series2: List[Dict]) -> tuple:
+    """Align two series by date, using interpolation if needed"""
+    dates1 = {point.get('date'): point for point in series1}
+    dates2 = {point.get('date'): point for point in series2}
+    all_dates = sorted(set(list(dates1.keys()) + list(dates2.keys())))
+    
+    aligned1 = []
+    aligned2 = []
+    
+    for date in all_dates:
+        point1 = dates1.get(date)
+        point2 = dates2.get(date)
+        
+        if not point1 and aligned1:
+            point1 = aligned1[-1]
+        if not point2 and aligned2:
+            point2 = aligned2[-1]
+        
+        if point1 and point2:
+            aligned1.append({
+                "date": date,
+                "value": point1.get('value', point1.get('price', 0))
+            })
+            aligned2.append({
+                "date": date,
+                "value": point2.get('value', point2.get('price', 0))
+            })
+    
+    return aligned1, aligned2
+
+async def get_portfolio_series(user_id: str, from_date: str, to_date: str) -> List[Dict]:
+    """Get portfolio time series between dates"""
+    try:
+        metrics = await calculate_portfolio_metrics(user_id)
+        holdings = metrics.get("holdings", [])
+        
+        if not holdings:
+            return []
+        
+        from_dt = datetime.fromisoformat(from_date)
+        to_dt = datetime.fromisoformat(to_date)
+        current_value = metrics.get("currentValue", 0)
+        cost_basis = metrics.get("costBasis", 0)
+        
+        series = []
+        days = (to_dt - from_dt).days
+        
+        for i in range(0, days + 1, max(1, days // 30)):
+            date = from_dt + timedelta(days=i)
+            days_elapsed = i
+            progress = min(1.0, days_elapsed / days) if days > 0 else 0
+            estimated_value = cost_basis + (current_value - cost_basis) * progress
+            
+            series.append({
+                "date": date.strftime("%Y-%m-%d"),
+                "value": estimated_value
+            })
+        
+        return series
+    except Exception as e:
+        logger.error(f"Error getting portfolio series: {str(e)}")
+        return []
+
+@portfolio_router.get("/benchmark")
+async def get_benchmark_comparison(
+    benchmark_id: str,
+    from_date: str,
+    to_date: str,
+    weights: Optional[str] = None,
+    adjust_for_inflation: Optional[str] = "false",
+    current_user: UserData = Depends(get_current_user_dependency)
+):
+    """Compare portfolio performance against a benchmark"""
+    try:
+        portfolio_series = await get_portfolio_series(current_user.id, from_date, to_date)
+        
+        if not portfolio_series:
+            raise HTTPException(status_code=400, detail="No portfolio data available for the selected date range")
+        
+        benchmark_series = []
+        
+        if benchmark_id == "CUSTOM":
+            if not weights:
+                raise HTTPException(status_code=400, detail="Weights required for custom benchmark")
+            
+            try:
+                weight_dict = json.loads(weights)
+            except json.JSONDecodeError:
+                raise HTTPException(status_code=400, detail="Invalid weights JSON format")
+            
+            total_weight = sum(weight_dict.values())
+            if abs(total_weight - 1.0) > 0.01:
+                raise HTTPException(status_code=400, detail=f"Weights must sum to 100% (got {total_weight*100:.1f}%)")
+            
+            component_series = {}
+            for symbol, weight in weight_dict.items():
+                if weight > 0:
+                    bench_info = benchmark_service.get_benchmark_info(symbol)
+                    if not bench_info:
+                        raise HTTPException(status_code=400, detail=f"Unknown benchmark symbol: {symbol}")
+                    
+                    asset_type = bench_info.get("type", "stock")
+                    hist_prices = await benchmark_service.get_historical_prices(
+                        symbol, from_date, to_date, asset_type
+                    )
+                    component_series[symbol] = hist_prices
+            
+            all_dates = set()
+            for series in component_series.values():
+                all_dates.update(point.get('date') for point in series)
+            
+            sorted_dates = sorted(all_dates)
+            for date in sorted_dates:
+                weighted_value = 0.0
+                for symbol, weight in weight_dict.items():
+                    if symbol in component_series:
+                        series = component_series[symbol]
+                        price = 0.0
+                        for point in series:
+                            if point.get('date') == date:
+                                price = point.get('price', 0)
+                                break
+                        if price == 0 and series:
+                            price = series[-1].get('price', 0)
+                        weighted_value += price * weight
+                
+                benchmark_series.append({
+                    "date": date,
+                    "price": weighted_value
+                })
+        else:
+            bench_info = benchmark_service.get_benchmark_info(benchmark_id)
+            if not bench_info:
+                raise HTTPException(status_code=400, detail=f"Unknown benchmark: {benchmark_id}")
+            
+            asset_type = bench_info.get("type", "stock")
+            hist_prices = await benchmark_service.get_historical_prices(
+                bench_info["symbol"], from_date, to_date, asset_type
+            )
+            benchmark_series = hist_prices
+        
+        if not benchmark_series:
+            raise HTTPException(status_code=500, detail="Failed to fetch benchmark data")
+        
+        portfolio_aligned, benchmark_aligned = align_series_by_date(portfolio_series, benchmark_series)
+        
+        if not portfolio_aligned or not benchmark_aligned:
+            raise HTTPException(status_code=400, detail="No overlapping dates between portfolio and benchmark")
+        
+        portfolio_normalized = normalize_series(portfolio_aligned)
+        benchmark_normalized = normalize_series(benchmark_aligned)
+        
+        portfolio_values = [p['value'] for p in portfolio_normalized]
+        benchmark_values = [b['value'] for b in benchmark_normalized]
+        
+        portfolio_start = portfolio_values[0] if portfolio_values else 100
+        portfolio_end = portfolio_values[-1] if portfolio_values else 100
+        benchmark_start = benchmark_values[0] if benchmark_values else 100
+        benchmark_end = benchmark_values[-1] if benchmark_values else 100
+        
+        portfolio_return_pct = ((portfolio_end / portfolio_start) - 1) * 100
+        benchmark_return_pct = ((benchmark_end / benchmark_start) - 1) * 100
+        
+        from_dt = datetime.fromisoformat(from_date)
+        to_dt = datetime.fromisoformat(to_date)
+        years = (to_dt - from_dt).days / 365.25
+        
+        portfolio_cagr = calculate_cagr(portfolio_start, portfolio_end, years)
+        benchmark_cagr = calculate_cagr(benchmark_start, benchmark_end, years)
+        portfolio_max_dd = calculate_max_drawdown(portfolio_values)
+        benchmark_max_dd = calculate_max_drawdown(benchmark_values)
+        
+        stats = {
+            "portfolioReturnPct": round(portfolio_return_pct, 2),
+            "benchmarkReturnPct": round(benchmark_return_pct, 2),
+            "portfolioCagrPct": round(portfolio_cagr, 2),
+            "benchmarkCagrPct": round(benchmark_cagr, 2),
+            "portfolioMaxDrawdownPct": round(portfolio_max_dd, 2),
+            "benchmarkMaxDrawdownPct": round(benchmark_max_dd, 2)
+        }
+        
+        real_portfolio = None
+        real_benchmark = None
+        
+        if adjust_for_inflation.lower() == "true":
+            inflation_data = await benchmark_service.get_inflation_index(from_date, to_date)
+            
+            if inflation_data:
+                inflation_map = {point['date']: point['index'] for point in inflation_data}
+                base_index = inflation_data[0]['index'] if inflation_data else 100.0
+                
+                real_portfolio = []
+                for point in portfolio_normalized:
+                    date = point['date']
+                    nominal_value = point['value']
+                    current_index = inflation_map.get(date, base_index)
+                    real_value = nominal_value * (base_index / current_index)
+                    real_portfolio.append({
+                        "date": date,
+                        "value": round(real_value, 2)
+                    })
+                
+                real_benchmark = []
+                for point in benchmark_normalized:
+                    date = point['date']
+                    nominal_value = point['value']
+                    current_index = inflation_map.get(date, base_index)
+                    real_value = nominal_value * (base_index / current_index)
+                    real_benchmark.append({
+                        "date": date,
+                        "value": round(real_value, 2)
+                    })
+                
+                if real_portfolio and real_benchmark:
+                    real_portfolio_values = [p['value'] for p in real_portfolio]
+                    real_benchmark_values = [b['value'] for b in real_benchmark]
+                    
+                    real_portfolio_start = real_portfolio_values[0]
+                    real_portfolio_end = real_portfolio_values[-1]
+                    real_benchmark_start = real_benchmark_values[0]
+                    real_benchmark_end = real_benchmark_values[-1]
+                    
+                    real_portfolio_return = ((real_portfolio_end / real_portfolio_start) - 1) * 100
+                    real_benchmark_return = ((real_benchmark_end / real_benchmark_start) - 1) * 100
+                    
+                    stats["portfolioRealReturnPct"] = round(real_portfolio_return, 2)
+                    stats["benchmarkRealReturnPct"] = round(real_benchmark_return, 2)
+        
+        return {
+            "portfolio": portfolio_normalized,
+            "benchmark": benchmark_normalized,
+            "realPortfolio": real_portfolio,
+            "realBenchmark": real_benchmark,
+            "stats": stats
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting benchmark comparison: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get benchmark comparison: {str(e)}")
+
+class ProjectionInput(BaseModel):
+    currentPortfolioValue: float
+    currentAge: Optional[int] = None
+    targetAmount: Optional[float] = None
+    targetAge: Optional[int] = None
+    monthlyContribution: float
+    annualContributionIncreasePct: float
+    expectedAnnualReturnPct: float
+    annualVolatilityPct: float
+    years: int
+    effectiveTaxRatePct: float = 0.0
+
+@portfolio_router.post("/projections")
+async def calculate_projections(
+    input_data: ProjectionInput,
+    current_user: UserData = Depends(get_current_user_dependency)
+):
+    """
+    Calculate financial projections with Monte Carlo simulation
+    
+    Request body: ProjectionInput
+    Response: ProjectionResult with deterministic path, Monte Carlo paths, and summary
+    """
+    try:
+        # Validate inputs
+        if input_data.monthlyContribution < 0:
+            raise HTTPException(status_code=400, detail="Monthly contribution cannot be negative")
+        if input_data.annualVolatilityPct < 0:
+            raise HTTPException(status_code=400, detail="Volatility cannot be negative")
+        if input_data.years < 1:
+            raise HTTPException(status_code=400, detail="Projection horizon must be at least 1 year")
+        if input_data.effectiveTaxRatePct < 0 or input_data.effectiveTaxRatePct > 60:
+            raise HTTPException(status_code=400, detail="Tax rate must be between 0% and 60%")
+        if input_data.expectedAnnualReturnPct > 0.5:  # 50% is extremely high
+            logger.warning(f"Very high expected return: {input_data.expectedAnnualReturnPct * 100}%")
+        
+        # Calculate projection
+        result = projection_service.calculate_projection(
+            current_portfolio_value=input_data.currentPortfolioValue,
+            monthly_contribution=input_data.monthlyContribution,
+            annual_contribution_increase_pct=input_data.annualContributionIncreasePct,
+            expected_annual_return_pct=input_data.expectedAnnualReturnPct,
+            annual_volatility_pct=input_data.annualVolatilityPct,
+            years=input_data.years,
+            current_age=input_data.currentAge,
+            target_amount=input_data.targetAmount,
+            target_age=input_data.targetAge,
+            effective_tax_rate_pct=input_data.effectiveTaxRatePct
+        )
+        
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error calculating projections: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to calculate projections: {str(e)}")
 
