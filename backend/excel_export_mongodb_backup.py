@@ -1,6 +1,3 @@
-"""
-Excel export using Supabase
-"""
 from fastapi import APIRouter, HTTPException, Depends, Response
 from fastapi.responses import StreamingResponse
 from datetime import datetime
@@ -8,8 +5,7 @@ import io
 import openpyxl
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from openpyxl.utils import get_column_letter
-from auth_supabase import get_current_user_dependency, UserData
-from db_supabase import get_db_pool, execute_query
+from auth import get_current_user_dependency, UserData
 import logging
 
 logger = logging.getLogger(__name__)
@@ -22,19 +18,28 @@ async def export_holdings_excel(
 ):
     """Export holdings to Excel file"""
     try:
-        pool = await get_db_pool()
+        from motor.motor_asyncio import AsyncIOMotorClient
+        import os
+        from dotenv import load_dotenv
+        from pathlib import Path
+        
+        # MongoDB connection
+        ROOT_DIR = Path(__file__).parent
+        load_dotenv(ROOT_DIR / '.env')
+        mongo_url = os.environ['MONGO_URL']
+        client = AsyncIOMotorClient(mongo_url)
+        db = client[os.environ['DB_NAME']]
         
         # Fetch user's holdings
-        holdings = await execute_query(
-            "SELECT * FROM holdings WHERE user_id = $1 ORDER BY created_at DESC",
-            current_user.id
-        )
+        holdings = await db.holdings.find({"user_id": current_user.id}).to_list(1000)
         
         if not holdings:
             raise HTTPException(status_code=404, detail="No holdings found")
         
         # Create Excel workbook
         wb = openpyxl.Workbook()
+        
+        # Remove default sheet and create custom sheets
         wb.remove(wb.active)
         
         # Create Holdings sheet
@@ -76,44 +81,44 @@ async def export_holdings_excel(
         total_value = 0
         
         for row, holding in enumerate(holdings, 2):
-            holdings_sheet.cell(row=row, column=1, value=holding['symbol'])
-            holdings_sheet.cell(row=row, column=2, value=holding['name'])
-            holdings_sheet.cell(row=row, column=3, value=holding['type'].replace('_', ' ').title())
-            holdings_sheet.cell(row=row, column=4, value=holding.get('sector') or "Other")
+            holdings_sheet.cell(row=row, column=1, value=holding["symbol"])
+            holdings_sheet.cell(row=row, column=2, value=holding["name"])
+            holdings_sheet.cell(row=row, column=3, value=holding["type"].replace('_', ' ').title())
+            holdings_sheet.cell(row=row, column=4, value=holding.get("sector", "Other"))
             
-            shares_cell = holdings_sheet.cell(row=row, column=5, value=float(holding['shares']))
+            shares_cell = holdings_sheet.cell(row=row, column=5, value=holding["shares"])
             shares_cell.number_format = number_format
             
-            avg_cost_cell = holdings_sheet.cell(row=row, column=6, value=float(holding['avg_cost']))
+            avg_cost_cell = holdings_sheet.cell(row=row, column=6, value=holding["avg_cost"])
             avg_cost_cell.number_format = currency_format
             
-            current_price_cell = holdings_sheet.cell(row=row, column=7, value=float(holding['current_price']))
+            current_price_cell = holdings_sheet.cell(row=row, column=7, value=holding["current_price"])
             current_price_cell.number_format = currency_format
             
-            total_cost_cell = holdings_sheet.cell(row=row, column=8, value=float(holding['total_cost']))
+            total_cost_cell = holdings_sheet.cell(row=row, column=8, value=holding["total_cost"])
             total_cost_cell.number_format = currency_format
             
-            total_value_cell = holdings_sheet.cell(row=row, column=9, value=float(holding['total_value']))
+            total_value_cell = holdings_sheet.cell(row=row, column=9, value=holding["total_value"])
             total_value_cell.number_format = currency_format
             
-            gain_loss_cell = holdings_sheet.cell(row=row, column=10, value=float(holding['gain_loss']))
+            gain_loss_cell = holdings_sheet.cell(row=row, column=10, value=holding["gain_loss"])
             gain_loss_cell.number_format = currency_format
             
-            gain_loss_pct_cell = holdings_sheet.cell(row=row, column=11, value=float(holding['gain_loss_percent']) / 100)
+            gain_loss_pct_cell = holdings_sheet.cell(row=row, column=11, value=holding["gain_loss_percent"] / 100)
             gain_loss_pct_cell.number_format = percentage_format
             
             # Color code gain/loss
-            if holding['gain_loss'] >= 0:
+            if holding["gain_loss"] >= 0:
                 gain_loss_cell.font = Font(color="00B050")
                 gain_loss_pct_cell.font = Font(color="00B050")
             else:
                 gain_loss_cell.font = Font(color="C00000")
                 gain_loss_pct_cell.font = Font(color="C00000")
             
-            last_updated = holding.get('last_updated')
+            last_updated = holding.get("last_updated")
             if last_updated:
                 if isinstance(last_updated, str):
-                    last_updated_str = last_updated[:19]
+                    last_updated_str = last_updated[:19]  # Remove microseconds
                 else:
                     last_updated_str = last_updated.strftime('%Y-%m-%d %H:%M:%S')
             else:
@@ -121,12 +126,12 @@ async def export_holdings_excel(
             
             holdings_sheet.cell(row=row, column=12, value=last_updated_str)
             
-            # Apply borders
+            # Apply borders to all data cells
             for col in range(1, 13):
                 holdings_sheet.cell(row=row, column=col).border = thin_border
             
-            total_cost += float(holding['total_cost'])
-            total_value += float(holding['total_value'])
+            total_cost += holding["total_cost"]
+            total_value += holding["total_value"]
         
         # Add summary row
         summary_row = len(holdings) + 3
@@ -163,6 +168,7 @@ async def export_holdings_excel(
         # Create Summary sheet
         summary_sheet = wb.create_sheet("Portfolio Summary")
         
+        # Portfolio summary data
         summary_data = [
             ["Portfolio Summary", ""],
             ["", ""],
@@ -175,11 +181,12 @@ async def export_holdings_excel(
             ["Export Date", datetime.now().strftime('%Y-%m-%d %H:%M:%S')],
         ]
         
+        # Write summary data
         for row, (label, value) in enumerate(summary_data, 1):
             summary_sheet.cell(row=row, column=1, value=label)
-            if row == 1:
+            if row == 1:  # Title
                 summary_sheet.cell(row=row, column=1).font = Font(bold=True, size=16)
-            elif label and value != "":
+            elif label and value != "":  # Data rows
                 summary_sheet.cell(row=row, column=1).font = Font(bold=True)
                 summary_sheet.cell(row=row, column=2, value=value)
                 
@@ -188,34 +195,39 @@ async def export_holdings_excel(
                         summary_sheet.cell(row=row, column=2).number_format = currency_format
                     else:
                         summary_sheet.cell(row=row, column=2).number_format = percentage_format
-                    
+                        
                     if "Gain/Loss" in label:
                         color = "00B050" if value >= 0 else "C00000"
                         summary_sheet.cell(row=row, column=2).font = Font(color=color, bold=True)
         
+        # Adjust column widths for summary sheet
         summary_sheet.column_dimensions['A'].width = 25
         summary_sheet.column_dimensions['B'].width = 20
         
         # Asset allocation analysis
         asset_breakdown = {}
         for holding in holdings:
-            asset_type = holding['type'].replace('_', ' ').title()
+            asset_type = holding["type"].replace('_', ' ').title()
             if asset_type not in asset_breakdown:
                 asset_breakdown[asset_type] = {"count": 0, "value": 0}
             asset_breakdown[asset_type]["count"] += 1
-            asset_breakdown[asset_type]["value"] += float(holding['total_value'])
+            asset_breakdown[asset_type]["value"] += holding["total_value"]
         
+        # Add asset breakdown to summary
         start_row = len(summary_data) + 3
         summary_sheet.cell(row=start_row, column=1, value="Asset Breakdown").font = Font(bold=True, size=14)
         
         for i, (asset_type, data) in enumerate(asset_breakdown.items(), 1):
             row = start_row + i + 1
-            summary_sheet.cell(row=row, column=1, value=f"{asset_type}:").font = Font(bold=True)
+            summary_sheet.cell(row=row, column=1, value=f"{asset_type}:")
+            summary_sheet.cell(row=row, column=1).font = Font(bold=True)
             
             percentage = (data["value"] / total_value) * 100 if total_value > 0 else 0
             summary_sheet.cell(row=row, column=2, value=f"{data['count']} holdings")
-            summary_sheet.cell(row=row, column=3, value=data["value"]).number_format = currency_format
-            summary_sheet.cell(row=row, column=4, value=percentage / 100).number_format = percentage_format
+            summary_sheet.cell(row=row, column=3, value=data["value"])
+            summary_sheet.cell(row=row, column=3).number_format = currency_format
+            summary_sheet.cell(row=row, column=4, value=percentage / 100)
+            summary_sheet.cell(row=row, column=4).number_format = percentage_format
         
         summary_sheet.column_dimensions['C'].width = 15
         summary_sheet.column_dimensions['D'].width = 12
@@ -225,9 +237,11 @@ async def export_holdings_excel(
         wb.save(excel_buffer)
         excel_buffer.seek(0)
         
+        # Generate filename
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         filename = f"portfolio_holdings_{timestamp}.xlsx"
         
+        # Create response
         response = StreamingResponse(
             io.BytesIO(excel_buffer.getvalue()),
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -235,7 +249,7 @@ async def export_holdings_excel(
         )
         
         return response
+        
     except Exception as e:
         logger.error(f"Error exporting holdings to Excel: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to export holdings")
-

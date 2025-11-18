@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { TrendingUp, TrendingDown, DollarSign, PieChart as PieChartIcon, BarChart3, Activity, Target, Wallet, Plus, RefreshCw, Download } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, PieChart as PieChartIcon, BarChart3, Activity, Target, Wallet, Plus, RefreshCw, Download, Layers } from 'lucide-react';
 // All data now comes from backend - no mock imports needed
 import InvestmentList from './InvestmentList';
 import SPYComparison from './SPYComparison';
@@ -11,22 +11,48 @@ import PerformanceChart from './PerformanceChart';
 import PieChart from './PieChart';
 import ContributionChart from './ContributionChart';
 import AssetBreakdownChart from './AssetBreakdownChart';
+import AssetClassBarChart from './AssetClassBarChart';
+import PortfolioPieChart from './PortfolioPieChart';
 import AddHoldingModal from './AddHoldingModal';
 import EditHoldingModal from './EditHoldingModal';
+import ImportHoldingsModal from './ImportHoldingsModal';
 import MoonaLogo from './MoonaLogo';
 import AnimatedMoon from './AnimatedMoon';
+import PortfolioSummaryRow from './PortfolioSummaryRow';
+import KPICard from './KPICard';
 import holdingsService from '../services/holdingsService';
+import portfolioService from '../services/portfolioService';
 import { useToast } from '../hooks/use-toast';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
 const Dashboard = () => {
+  // Helper function to get asset type color
+  const getAssetTypeColor = (assetType) => {
+    const colors = {
+      'stock': '#059669',
+      'stocks': '#059669',
+      'crypto': '#dc2626',
+      'roth_ira': '#7c3aed',
+      'roth ira': '#7c3aed',
+      'etf': '#3b82f6',
+      'bond': '#f59e0b',
+      'other': '#6b7280'
+    };
+    return colors[assetType?.toLowerCase()] || colors['other'];
+  };
+
   const [selectedTab, setSelectedTab] = useState('overview');
   const [holdings, setHoldings] = useState([]);
   const [portfolioSummary, setPortfolioSummary] = useState(null);
+  const [portfolioPerformance, setPortfolioPerformance] = useState(null);
+  const [portfolioAllocation, setPortfolioAllocation] = useState(null);
+  const [spyComparison, setSpyComparison] = useState(null);
+  const [topPerformers, setTopPerformers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [editingHolding, setEditingHolding] = useState(null);
+  const [lastUpdated, setLastUpdated] = useState(new Date());
   const { toast } = useToast();
 
   const formatCurrency = (amount) => {
@@ -57,18 +83,98 @@ const Dashboard = () => {
   const loadDashboardData = async () => {
     try {
       setIsLoading(true);
-      const [holdingsData, summaryData] = await Promise.all([
-        holdingsService.getHoldings(),
-        holdingsService.getPortfolioSummary()
+      
+      // Load critical data first (holdings and summary), then load analytics in parallel
+      // This provides faster initial render
+      const [holdingsResult, summaryResult] = await Promise.allSettled([
+        holdingsService.getHoldings().catch(err => {
+          console.error('Error loading holdings:', err);
+          return [];
+        }),
+        portfolioService.getSummary().catch(err => {
+          console.error('Error loading summary:', err);
+          return null;
+        })
       ]);
       
-      setHoldings(holdingsData);
-      setPortfolioSummary(summaryData);
+      // Set critical data immediately for faster UI update
+      const loadedHoldings = holdingsResult.status === 'fulfilled' ? holdingsResult.value : [];
+      console.log('Dashboard - holdingsResult.status:', holdingsResult.status);
+      console.log('Dashboard - loadedHoldings:', loadedHoldings);
+      console.log('Dashboard - loadedHoldings.length:', Array.isArray(loadedHoldings) ? loadedHoldings.length : 'not an array');
+      console.log('Dashboard - loadedHoldings type:', typeof loadedHoldings);
+      
+      // Ensure holdings is always an array
+      const safeHoldings = Array.isArray(loadedHoldings) ? loadedHoldings : [];
+      console.log('Dashboard - safeHoldings.length:', safeHoldings.length);
+      setHoldings(safeHoldings);
+      
+      // Show success message if holdings were loaded
+      if (safeHoldings.length > 0) {
+        console.log(`✅ Successfully loaded ${safeHoldings.length} holdings`);
+      } else if (holdingsResult.status === 'fulfilled') {
+        console.warn('⚠️ API returned empty array - no holdings found');
+      } else {
+        console.error('❌ Failed to load holdings:', holdingsResult.reason);
+      }
+      
+      setPortfolioSummary(summaryResult.status === 'fulfilled' ? summaryResult.value : null);
+      
+      // Load analytics data in parallel (can load in background)
+      const analyticsResults = await Promise.allSettled([
+        portfolioService.getPerformance().catch(err => {
+          console.error('Error loading performance:', err);
+          return null;
+        }),
+        portfolioService.getAllocation().catch(err => {
+          console.error('Error loading allocation:', err);
+          return null;
+        }),
+        portfolioService.getSPYComparison().catch(err => {
+          console.error('Error loading SPY comparison:', err);
+          return null;
+        }),
+        portfolioService.getTopPerformers(5).catch(err => {
+          console.error('Error loading top performers:', err);
+          return [];
+        })
+      ]);
+      
+      // Update analytics data
+      const [
+        performanceResult,
+        allocationResult,
+        spyResult,
+        topPerformersResult
+      ] = analyticsResults;
+      
+      setPortfolioPerformance(performanceResult.status === 'fulfilled' ? performanceResult.value : null);
+      setPortfolioAllocation(allocationResult.status === 'fulfilled' ? allocationResult.value : null);
+      setSpyComparison(spyResult.status === 'fulfilled' ? spyResult.value : null);
+      setTopPerformers(topPerformersResult.status === 'fulfilled' ? topPerformersResult.value : []);
+      setLastUpdated(new Date());
+      
+      // Show error toast only if critical requests failed
+      const allResults = [holdingsResult, summaryResult, ...analyticsResults];
+      const failedCount = allResults.filter(r => r.status === 'rejected').length;
+      if (failedCount === allResults.length) {
+        toast({
+          title: "Error Loading Data",
+          description: "Failed to load portfolio data. Please check your connection and try again.",
+          variant: "destructive"
+        });
+      } else if (failedCount > 0) {
+        toast({
+          title: "Partial Data Loaded",
+          description: `Some data failed to load (${failedCount} of ${allResults.length} requests). Please refresh to retry.`,
+          variant: "default"
+        });
+      }
     } catch (error) {
       console.error('Error loading dashboard data:', error);
       toast({
         title: "Error Loading Data",
-        description: "Failed to load portfolio data. Please try again.",
+        description: error.response?.data?.detail || error.message || "Failed to load portfolio data. Please try again.",
         variant: "destructive"
       });
     } finally {
@@ -171,21 +277,9 @@ const Dashboard = () => {
     }
   };
 
-  // Calculate derived data with safe defaults
+  // Calculate derived data with safe defaults (for backward compatibility)
   const allocation = holdingsService.calculateAllocation(holdings || []);
-  const performanceHistory = holdingsService.generatePerformanceHistory(holdings || [], portfolioSummary || {});
-  
-  // Generate SPY comparison data
-  const spyComparison = {
-    portfolioValue: portfolioSummary?.total_value || 0,
-    portfolioInvested: portfolioSummary?.total_cost || 0,
-    portfolioReturn: portfolioSummary?.total_gain_loss_percent || 0,
-    spyValue: (portfolioSummary?.total_cost || 0) * 1.185, // Assume 18.5% SPY return
-    spyInvested: portfolioSummary?.total_cost || 0,
-    spyReturn: 18.5,
-    outperformance: (portfolioSummary?.total_gain_loss_percent || 0) - 18.5,
-    absoluteDifference: (portfolioSummary?.total_value || 0) - ((portfolioSummary?.total_cost || 0) * 1.185)
-  };
+  const performanceHistory = portfolioPerformance?.portfolioPerformance || holdingsService.generatePerformanceHistory(holdings || [], portfolioSummary || {});
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-blue-900 relative overflow-hidden">
@@ -218,7 +312,7 @@ const Dashboard = () => {
           <div className="flex items-center space-x-2 px-3 py-1.5 bg-white/80 backdrop-blur-sm border border-slate-200 rounded-lg text-sm">
             <Activity className="w-4 h-4 text-blue-600" />
             <span className="text-slate-700">
-              Last updated: {new Date().toLocaleTimeString()}
+              Last updated: {lastUpdated.toLocaleTimeString()}
             </span>
           </div>
           <Button
@@ -239,278 +333,79 @@ const Dashboard = () => {
             <Download className="w-4 h-4 mr-2" />
             Export Excel
           </Button>
+          <ImportHoldingsModal onImportComplete={handleHoldingAdded} />
           <AddHoldingModal onHoldingAdded={handleHoldingAdded} />
         </div>
 
-        {/* Enhanced KPI Table with Premium Design */}
+        {/* Header Summary Strip - Common to all tabs */}
         {isLoading ? (
-          <div className="mb-4">
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-400/20 via-purple-400/20 to-pink-400/20 rounded-3xl blur-2xl"></div>
-              <div className="relative bg-white/90 backdrop-blur-2xl rounded-3xl p-4 shadow-2xl border border-white/50">
-                <div className="animate-pulse">
-                  <div className="flex items-center space-x-4 mb-4">
-                    <div className="w-12 h-12 bg-gradient-to-r from-slate-200 to-slate-300 rounded-2xl"></div>
-                    <div className="space-y-2">
-                      <div className="h-6 w-48 bg-gradient-to-r from-slate-200 to-slate-300 rounded-lg"></div>
-                      <div className="h-4 w-32 bg-slate-200 rounded-md"></div>
+          <div className="mb-6 space-y-4">
+            <div className="bg-white rounded-lg p-6 animate-pulse">
+              <div className="h-6 bg-gray-200 rounded w-1/4 mb-4"></div>
+              <div className="grid grid-cols-5 gap-4">
+                <div className="h-4 bg-gray-200 rounded"></div>
+                <div className="h-4 bg-gray-200 rounded"></div>
+                <div className="h-4 bg-gray-200 rounded"></div>
+                <div className="h-4 bg-gray-200 rounded"></div>
+                <div className="h-4 bg-gray-200 rounded"></div>
                     </div>
                   </div>
-                  <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     {[...Array(4)].map((_, i) => (
-                      <div key={i} className="grid grid-cols-5 gap-8 items-center">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 bg-slate-200 rounded-xl"></div>
-                          <div className="space-y-2">
-                            <div className="h-4 w-16 bg-slate-200 rounded-md"></div>
-                            <div className="h-3 w-12 bg-slate-150 rounded-sm"></div>
-                          </div>
-                        </div>
-                        <div className="h-5 bg-slate-200 rounded-md"></div>
-                        <div className="h-5 bg-slate-200 rounded-md"></div>
-                        <div className="h-5 bg-slate-200 rounded-md"></div>
-                        <div className="h-6 w-20 bg-slate-200 rounded-full ml-auto"></div>
+                <div key={i} className="bg-white rounded-lg p-6 animate-pulse">
+                  <div className="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
+                  <div className="h-8 bg-gray-200 rounded w-3/4"></div>
                       </div>
                     ))}
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
         ) : (
-          <div className="mb-4">
-            {/* KPI Table */}
-            <div className="bg-white rounded-2xl shadow-2xl border border-slate-200/50 overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-gradient-to-r from-slate-50 to-slate-100 border-b border-slate-200">
-                      <th className="text-left py-4 px-6 font-bold text-slate-700 text-sm uppercase tracking-wider">
-                        Investment Type
-                      </th>
-                      <th className="text-right py-4 px-6 font-bold text-slate-700 text-sm uppercase tracking-wider">
-                        Cost Basis
-                      </th>
-                      <th className="text-right py-4 px-6 font-bold text-slate-700 text-sm uppercase tracking-wider">
-                        Current Value
-                      </th>
-                      <th className="text-right py-4 px-6 font-bold text-slate-700 text-sm uppercase tracking-wider">
-                        Gain/Loss
-                      </th>
-                      <th className="text-right py-4 px-6 font-bold text-slate-700 text-sm uppercase tracking-wider">
-                        Return %
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(() => {
-                      // Calculate asset type breakdowns
-                      const assetBreakdown = {};
-                      holdings?.forEach(holding => {
-                        const type = holding.type === 'roth_ira' ? 'Roth IRA' : 
-                                   holding.type === 'crypto' ? 'Crypto' : 'Stocks';
-                        
-                        if (!assetBreakdown[type]) {
-                          assetBreakdown[type] = {
-                            cost: 0,
-                            value: 0,
-                            gainLoss: 0
-                          };
-                        }
-                        
-                        assetBreakdown[type].cost += holding.total_cost || 0;
-                        assetBreakdown[type].value += holding.total_value || 0;
-                        assetBreakdown[type].gainLoss += holding.gain_loss || 0;
-                      });
+          <div className="mb-6 space-y-4">
+            {/* A. Portfolio Summary Row */}
+            <PortfolioSummaryRow 
+              summary={portfolioSummary ? {
+                costBasis: portfolioSummary.costBasis,
+                currentValue: portfolioSummary.currentValue,
+                gainLoss: portfolioSummary.gainLoss,
+                returnPct: portfolioSummary.returnPct
+              } : null}
+            />
 
-                      const getAssetIcon = (type) => {
-                        switch(type) {
-                          case 'Stocks': return '📈';
-                          case 'Crypto': return '₿';
-                          case 'Roth IRA': return '🏛️';
-                          default: return '💼';
-                        }
-                      };
-
-                      const getAssetColor = (type) => {
-                        switch(type) {
-                          case 'Stocks': return 'bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100';
-                          case 'Crypto': return 'bg-gradient-to-r from-orange-50 to-red-50 hover:from-orange-100 hover:to-red-100';
-                          case 'Roth IRA': return 'bg-gradient-to-r from-purple-50 to-violet-50 hover:from-purple-100 hover:to-violet-100';
-                          default: return 'bg-gradient-to-r from-gray-50 to-slate-50 hover:from-gray-100 hover:to-slate-100';
-                        }
-                      };
-                      
-                      return Object.entries(assetBreakdown).map(([type, data], index) => {
-                        const percentageGain = data.cost > 0 ? ((data.gainLoss / data.cost) * 100) : 0;
-                        const isPositive = data.gainLoss >= 0;
-                        
-                        return (
-                          <tr key={type} className={`${getAssetColor(type)} border-b border-slate-100 transition-all duration-200 hover:scale-[1.01] hover:shadow-md`}>
-                            <td className="py-5 px-6">
-                              <div className="flex items-center space-x-3">
-                                <span className="text-2xl">{getAssetIcon(type)}</span>
-                                <div>
-                                  <div className="font-bold text-slate-900 text-lg">{type}</div>
-                                  <div className="text-slate-600 text-sm">
-                                    {portfolioSummary?.asset_breakdown?.[type.toLowerCase().replace(' ', '_')] || 0} holdings
+            {/* B. KPI Tiles Row */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <KPICard
+                icon={Activity}
+                title="Total Holdings"
+                value={portfolioSummary?.totalHoldings || 0}
+                subtitle="Total Holdings"
+                emptyState={portfolioSummary?.totalHoldings === 0 ? "No holdings yet" : null}
+              />
+              <KPICard
+                icon={TrendingUp}
+                title="Total Return %"
+                value={portfolioSummary ? formatPercent(portfolioSummary.returnPct) : "0.00%"}
+                subtitle="Total Return"
+                valueColor={portfolioSummary?.returnPct >= 0 ? "text-emerald-600" : portfolioSummary?.returnPct < 0 ? "text-red-600" : "text-gray-600"}
+                emptyState={portfolioSummary?.totalHoldings === 0 ? "No return data" : null}
+              />
+              <KPICard
+                icon={Target}
+                title="Best Performer"
+                value={portfolioSummary?.bestPerformer 
+                  ? `${portfolioSummary.bestPerformer.name} (${formatPercent(portfolioSummary.bestPerformer.returnPct)})`
+                  : "No holdings yet"}
+                subtitle="Best Performer"
+                emptyState={portfolioSummary?.totalHoldings === 0 ? "No holdings yet – add your first investment" : null}
+              />
+              <KPICard
+                icon={Layers}
+                title="Asset Types"
+                value={portfolioSummary?.assetTypeCount || 0}
+                subtitle="Asset Types"
+                emptyState={portfolioSummary?.assetTypeCount === 0 ? "No asset types" : null}
+              />
                                   </div>
                                 </div>
-                              </div>
-                            </td>
-                            <td className="py-5 px-6 text-right">
-                              <div className="font-semibold text-slate-700 text-lg">
-                                {formatCurrency(data.cost)}
-                              </div>
-                            </td>
-                            <td className="py-5 px-6 text-right">
-                              <div className="font-bold text-slate-900 text-lg">
-                                {formatCurrency(data.value)}
-                              </div>
-                            </td>
-                            <td className="py-5 px-6 text-right">
-                              <div className={`font-bold text-lg flex items-center justify-end space-x-2 ${isPositive ? 'text-emerald-600' : 'text-red-600'}`}>
-                                {isPositive ? (
-                                  <TrendingUp className="w-5 h-5" />
-                                ) : (
-                                  <TrendingDown className="w-5 h-5" />
-                                )}
-                                <span>
-                                  {data.gainLoss >= 0 ? '+' : ''}{formatCurrency(data.gainLoss)}
-                                </span>
-                              </div>
-                            </td>
-                            <td className="py-5 px-6 text-right">
-                              <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-bold ${
-                                isPositive 
-                                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' 
-                                  : 'bg-red-100 text-red-800 border border-red-200'
-                              }`}>
-                                {percentageGain >= 0 ? '+' : ''}{percentageGain.toFixed(2)}%
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      });
-                    })()}
-                    
-                    {/* Overall Total Row */}
-                    <tr className="bg-gradient-to-r from-slate-800 to-slate-900 text-white">
-                      <td className="py-6 px-6">
-                        <div className="flex items-center space-x-3">
-                          <div className="p-2 bg-gradient-to-r from-emerald-400 to-blue-500 rounded-lg">
-                            <Target className="w-6 h-6 text-white" />
-                          </div>
-                          <div>
-                            <div className="font-bold text-xl text-white">Portfolio Total</div>
-                            <div className="text-slate-300 text-sm">Complete overview</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-6 px-6 text-right">
-                        <div className="font-bold text-slate-200 text-lg">
-                          {formatCurrency(portfolioSummary?.total_cost || 0)}
-                        </div>
-                      </td>
-                      <td className="py-6 px-6 text-right">
-                        <div className="font-bold text-white text-xl">
-                          {formatCurrency(portfolioSummary?.total_value || 0)}
-                        </div>
-                      </td>
-                      <td className="py-6 px-6 text-right">
-                        <div className={`font-bold text-xl flex items-center justify-end space-x-2 ${
-                          (portfolioSummary?.total_gain_loss || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'
-                        }`}>
-                          {(portfolioSummary?.total_gain_loss || 0) >= 0 ? (
-                            <TrendingUp className="w-6 h-6" />
-                          ) : (
-                            <TrendingDown className="w-6 h-6" />
-                          )}
-                          <span>
-                            {(portfolioSummary?.total_gain_loss || 0) >= 0 ? '+' : ''}
-                            {formatCurrency(portfolioSummary?.total_gain_loss || 0)}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="py-6 px-6 text-right">
-                        <div className={`inline-flex items-center px-4 py-2 rounded-full text-lg font-bold ${
-                          (portfolioSummary?.total_gain_loss || 0) >= 0 
-                            ? 'bg-emerald-400 text-emerald-900 border-2 border-emerald-300' 
-                            : 'bg-red-400 text-red-900 border-2 border-red-300'
-                        }`}>
-                          {(portfolioSummary?.total_gain_loss_percent || 0) >= 0 ? '+' : ''}
-                          {(portfolioSummary?.total_gain_loss_percent || 0).toFixed(2)}%
-                        </div>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              
-              {/* Enhanced Bottom Stats */}
-              <div className="bg-gradient-to-r from-slate-50 to-blue-50 p-6 border-t border-slate-200">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                  <div className="bg-white rounded-xl p-4 shadow-md border border-slate-200 hover:shadow-lg transition-all duration-200">
-                    <div className="flex items-center space-x-3">
-                      <div className="p-2 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg">
-                        <Activity className="w-5 h-5 text-white" />
-                      </div>
-                      <div>
-                        <div className="text-2xl font-bold text-slate-900">{portfolioSummary?.asset_count || 0}</div>
-                        <div className="text-sm text-slate-600 font-medium">Total Holdings</div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="bg-white rounded-xl p-4 shadow-md border border-slate-200 hover:shadow-lg transition-all duration-200">
-                    <div className="flex items-center space-x-3">
-                      <div className={`p-2 rounded-lg ${(portfolioSummary?.total_gain_loss || 0) >= 0 ? 'bg-gradient-to-r from-emerald-500 to-emerald-600' : 'bg-gradient-to-r from-red-500 to-red-600'}`}>
-                        <TrendingUp className="w-5 h-5 text-white" />
-                      </div>
-                      <div>
-                        <div className={`text-2xl font-bold ${getChangeColor(portfolioSummary?.total_gain_loss || 0)}`}>
-                          {(portfolioSummary?.total_gain_loss || 0) >= 0 ? '+' : ''}
-                          {formatPercent(portfolioSummary?.total_gain_loss_percent || 0)}
-                        </div>
-                        <div className="text-sm text-slate-600 font-medium">Total Return</div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="bg-white rounded-xl p-4 shadow-md border border-slate-200 hover:shadow-lg transition-all duration-200">
-                    <div className="flex items-center space-x-3">
-                      <div className="p-2 bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg">
-                        <Target className="w-5 h-5 text-white" />
-                      </div>
-                      <div>
-                        <div className="text-2xl font-bold text-purple-600">
-                          {(() => {
-                            const best = holdings?.sort((a, b) => (b.gain_loss_percent || 0) - (a.gain_loss_percent || 0))[0];
-                            return best ? `+${best.gain_loss_percent.toFixed(1)}%` : '--';
-                          })()}
-                        </div>
-                        <div className="text-sm text-slate-600 font-medium">Best Performer</div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="bg-white rounded-xl p-4 shadow-md border border-slate-200 hover:shadow-lg transition-all duration-200">
-                    <div className="flex items-center space-x-3">
-                      <div className="p-2 bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg">
-                        <Wallet className="w-5 h-5 text-white" />
-                      </div>
-                      <div>
-                        <div className="text-2xl font-bold text-orange-600">
-                          {Object.keys(holdings?.reduce((acc, h) => ({...acc, [h.type]: true}), {}) || {}).length}
-                        </div>
-                        <div className="text-sm text-slate-600 font-medium">Asset Types</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
         )}
 
         {/* Main Content Tabs */}
@@ -525,20 +420,40 @@ const Dashboard = () => {
 
           <TabsContent value="overview" className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* 1. Asset Breakdown (Left chart) */}
               <Card className="bg-white/70 backdrop-blur-sm border-0 shadow-xl hover:shadow-2xl transition-all duration-300">
-                <CardHeader className="bg-gradient-to-r from-emerald-50 to-blue-50 rounded-t-xl">
+                <CardHeader className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-t-xl">
                   <CardTitle className="flex items-center text-gray-800">
-                    <div className="p-2 bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-lg mr-3">
-                      <BarChart3 className="w-5 h-5 text-white" />
+                    <div className="p-2 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-lg mr-3">
+                      <PieChartIcon className="w-5 h-5 text-white" />
                     </div>
-                    Portfolio Performance
+                    Asset Breakdown
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="pt-6">
-                  <PerformanceChart data={performanceHistory} />
+                  {portfolioAllocation?.assetTypeAllocation && portfolioAllocation.assetTypeAllocation.length > 0 ? (
+                    <PieChart 
+                      data={portfolioAllocation.assetTypeAllocation.map(item => ({
+                        type: item.assetType,
+                        value: item.value,
+                        percentage: item.percentage,
+                        color: item.color || getAssetTypeColor(item.assetType)
+                      }))}
+                      size={280}
+                    />
+                  ) : (
+                    <div className="h-64 flex items-center justify-center text-gray-500">
+                      <div className="text-center">
+                        <PieChartIcon className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                        <p className="text-sm">No allocation data yet</p>
+                        <p className="text-xs text-gray-400 mt-1">Add holdings to see asset breakdown</p>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
               
+              {/* 2. Top Performers (Right panel) */}
               <Card className="bg-white/70 backdrop-blur-sm border-0 shadow-xl hover:shadow-2xl transition-all duration-300">
                 <CardHeader className="bg-gradient-to-r from-emerald-50 to-blue-50 rounded-t-xl">
                   <CardTitle className="flex items-center text-gray-800">
@@ -549,160 +464,131 @@ const Dashboard = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="pt-6">
+                  {topPerformers && topPerformers.length > 0 ? (
                   <div className="space-y-4">
-                    {(holdings || [])
-                      .sort((a, b) => (b.gain_loss_percent || 0) - (a.gain_loss_percent || 0))
-                      .slice(0, 6)
-                      .map((investment) => (
-                        <div key={investment.id} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0">
+                      {topPerformers.map((performer, index) => (
+                        <div key={index} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0">
                           <div className="flex items-center space-x-3">
                             <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
                               <span className="text-xs font-bold text-gray-700">
-                                {investment.symbol.substring(0, 2)}
+                                {performer.symbol?.substring(0, 2) || '--'}
                               </span>
                             </div>
                             <div>
-                              <div className="font-medium text-sm">{investment.symbol}</div>
-                              <div className="text-xs text-gray-600 capitalize">{investment.type.replace('_', ' ')}</div>
+                              <div className="font-medium text-sm">{performer.symbol || performer.name}</div>
+                              <div className="text-xs text-gray-600">{performer.name}</div>
                             </div>
                           </div>
                           <div className="text-right">
-                            <div className="font-medium text-sm">{formatCurrency(investment.total_value)}</div>
-                            <div className={`text-xs flex items-center ${getChangeColor(investment.gain_loss)}`}>
-                              {investment.gain_loss >= 0 ? (
+                            <div className="font-medium text-sm">{formatCurrency(performer.value || 0)}</div>
+                            <div className={`text-xs flex items-center justify-end ${getChangeColor(performer.returnPct || 0)}`}>
+                              {performer.returnPct >= 0 ? (
                                 <TrendingUp className="w-3 h-3 mr-1" />
                               ) : (
                                 <TrendingDown className="w-3 h-3 mr-1" />
                               )}
-                              {formatPercent(investment.gain_loss_percent)}
+                              {formatPercent(performer.returnPct || 0)}
                             </div>
                           </div>
                         </div>
                       ))}
                   </div>
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      <p className="text-sm">No holdings yet – add your first investment.</p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
 
-            {/* Quick Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm text-gray-600">Asset Breakdown</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Stocks</span>
-                      <span className="font-medium">{portfolioSummary?.asset_breakdown?.stocks || 0}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span>Crypto</span>
-                      <span className="font-medium">{portfolioSummary?.asset_breakdown?.crypto || 0}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span>Roth IRA</span>
-                      <span className="font-medium">{portfolioSummary?.asset_breakdown?.roth_ira || 0}</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
+            {/* Bottom row: Best Performer, Monthly Avg Contribution */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* 3. Best Performer (Bottom left card) */}
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm text-gray-600">Best Performer</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {(() => {
-                    if (!holdings || holdings.length === 0) {
-                      return (
+                  {portfolioSummary?.bestPerformer ? (
                         <div>
-                          <div className="font-semibold">No holdings yet</div>
-                          <div className="text-sm text-gray-600">Add your first investment</div>
-                          <div className="text-lg font-bold text-gray-400 mt-1">--</div>
+                      <div className="font-semibold">{portfolioSummary.bestPerformer.name}</div>
+                      <div className="text-sm text-gray-600">{portfolioSummary.bestPerformer.symbol}</div>
+                      <div className={`text-lg font-bold mt-1 ${getChangeColor(portfolioSummary.bestPerformer.returnPct || 0)}`}>
+                        {formatPercent(portfolioSummary.bestPerformer.returnPct || 0)}
                         </div>
-                      );
-                    }
-                    const best = [...holdings].sort((a, b) => (b.gain_loss_percent || 0) - (a.gain_loss_percent || 0))[0];
-                    return (
-                      <div>
-                        <div className="font-semibold">{best.symbol}</div>
-                        <div className="text-sm text-gray-600">{best.name}</div>
-                        <div className={`text-lg font-bold mt-1 ${getChangeColor(best.gain_loss_percent || 0)}`}>
-                          {formatPercent(best.gain_loss_percent || 0)}
+                      <div className="text-sm text-gray-600 mt-1">
+                        {formatCurrency(portfolioSummary.bestPerformer.gainLoss || 0)}
                         </div>
                       </div>
-                    );
-                  })()}
+                  ) : (
+                    <div>
+                      <div className="font-semibold text-gray-400">Best Performer</div>
+                      <div className="text-sm text-gray-500 mt-1">No holdings yet – add your first investment.</div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
+              {/* 4. Monthly Avg Contribution (Bottom right card) */}
               <Card>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-sm text-gray-600">Monthly Avg</CardTitle>
+                  <CardTitle className="text-sm text-gray-600">Monthly Avg Contribution</CardTitle>
                 </CardHeader>
                 <CardContent>
+                  {portfolioPerformance?.monthlyContributions && portfolioPerformance.monthlyContributions.length > 0 ? (
+                    <>
                   <div className="text-2xl font-bold text-gray-900">
-                    {portfolioSummary?.totalValue ? formatCurrency(portfolioSummary.totalValue * 0.05) : formatCurrency(0)}
+                        {formatCurrency(
+                          portfolioPerformance.monthlyContributions.reduce((sum, c) => sum + (c.value || 0), 0) / 
+                          Math.max(portfolioPerformance.monthlyContributions.length, 1)
+                        )}
                   </div>
                   <div className="text-sm text-gray-600 mt-1">contribution</div>
+                    </>
+                  ) : (
+                    <div className="text-2xl font-bold text-gray-400">$0.00</div>
+                  )}
                 </CardContent>
               </Card>
             </div>
           </TabsContent>
 
           <TabsContent value="analytics" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Activity className="w-5 h-5 mr-2" />
-                    Asset Type Performance
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <AssetBreakdownChart data={performanceHistory} />
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Wallet className="w-5 h-5 mr-2" />
-                    Monthly Contributions
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ContributionChart data={[
-                    { month: 'Jan 2024', amount: 6000 },
-                    { month: 'Feb 2024', amount: 6000 },
-                    { month: 'Mar 2024', amount: 6500 },
-                    { month: 'Apr 2024', amount: 7000 },
-                    { month: 'May 2024', amount: 6000 },
-                    { month: 'Jun 2024', amount: 5500 },
-                    { month: 'Jul 2024', amount: 6500 },
-                    { month: 'Aug 2024', amount: 6000 },
-                    { month: 'Sep 2024', amount: 7200 }
-                  ]} />
-                </CardContent>
-              </Card>
-            </div>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <BarChart3 className="w-5 h-5 mr-2" />
-                  Portfolio vs SPY Comparison
+            {/* Portfolio Percentage Chart */}
+            <Card className="bg-white/70 backdrop-blur-sm border-0 shadow-xl hover:shadow-2xl transition-all duration-300">
+              <CardHeader className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-t-xl">
+                <CardTitle className="flex items-center text-gray-800">
+                  <div className="p-2 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-lg mr-3">
+                    <PieChartIcon className="w-5 h-5 text-white" />
+                  </div>
+                  Portfolio Percentage
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <PerformanceChart data={performanceHistory} showComparison={true} />
+              <CardContent className="pt-6">
+                <PortfolioPieChart holdings={holdings} />
+              </CardContent>
+            </Card>
+
+            {/* 3. Asset Class Breakdown (Bottom full-width chart) */}
+            <Card className="bg-white/70 backdrop-blur-sm border-0 shadow-xl hover:shadow-2xl transition-all duration-300">
+              <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-xl">
+                <CardTitle className="flex items-center text-gray-800">
+                  <div className="p-2 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg mr-3">
+                    <BarChart3 className="w-5 h-5 text-white" />
+                  </div>
+                  Asset Class Performance
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <AssetClassBarChart holdings={holdings} />
               </CardContent>
             </Card>
           </TabsContent>
 
           <TabsContent value="allocation" className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* 1. Asset Type Allocation (Top left chart) */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center">
@@ -711,10 +597,31 @@ const Dashboard = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <PieChart data={allocation.assetAllocation} size={250} />
+                  {portfolioAllocation?.assetTypeAllocation && portfolioAllocation.assetTypeAllocation.length > 0 ? (
+                    <PieChart 
+                      data={portfolioAllocation.assetTypeAllocation.map(item => ({
+                        type: item.assetType,
+                        value: item.value,
+                        percentage: item.percentage,
+                        color: item.assetType === 'stock' ? '#059669' : 
+                               item.assetType === 'crypto' ? '#dc2626' : 
+                               item.assetType === 'roth_ira' ? '#7c3aed' : '#6b7280'
+                      }))} 
+                      size={250} 
+                    />
+                  ) : (
+                    <div className="h-64 flex items-center justify-center text-gray-500">
+                      <div className="text-center">
+                        <PieChartIcon className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                        <p className="text-sm">No allocation data yet</p>
+                        <p className="text-xs text-gray-400 mt-1">Add holdings to see allocation</p>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
+              {/* 2. Sector Allocation (Top right chart) */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center">
@@ -723,33 +630,44 @@ const Dashboard = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <PieChart data={allocation.sectorAllocation} size={250} />
+                  {portfolioAllocation?.sectorAllocation && portfolioAllocation.sectorAllocation.length > 0 ? (
+                    <PieChart 
+                      data={portfolioAllocation.sectorAllocation.map((item, index) => {
+                        const colors = ['#3b82f6', '#dc2626', '#7c3aed', '#059669', '#f59e0b', '#8b5cf6', '#06b6d4'];
+                        return {
+                          type: item.sector,
+                          value: item.value,
+                          percentage: item.percentage,
+                          color: colors[index % colors.length]
+                        };
+                      })} 
+                      size={250} 
+                    />
+                  ) : (
+                    <div className="h-64 flex items-center justify-center text-gray-500">
+                      <div className="text-center">
+                        <Target className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                        <p className="text-sm">No sector data yet</p>
+                        <p className="text-xs text-gray-400 mt-1">Add holdings with sectors</p>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
 
-            {/* Allocation Summary */}
+            {/* 3. Allocation Summary (Bottom full-width card) */}
             <Card>
               <CardHeader>
                 <CardTitle>Allocation Summary</CardTitle>
               </CardHeader>
               <CardContent>
+                {portfolioAllocation?.allocationSummary ? (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
                     <h4 className="font-medium text-gray-900 mb-3">By Asset Type</h4>
-                    <div className="space-y-2">
-                      {allocation.assetAllocation.map((item, index) => (
-                        <div key={index} className="flex justify-between text-sm">
-                          <span className="flex items-center">
-                            <div 
-                              className="w-3 h-3 rounded-full mr-2" 
-                              style={{ backgroundColor: item.color }}
-                            />
-                            {item.type}
-                          </span>
-                          <span className="font-medium">{formatCurrency(item.value)}</span>
-                        </div>
-                      ))}
+                      <div className="space-y-2 text-sm text-gray-600">
+                        {portfolioAllocation.allocationSummary.byAssetType || "No asset types"}
                     </div>
                   </div>
 
@@ -758,15 +676,21 @@ const Dashboard = () => {
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
                         <span>High Risk (Crypto)</span>
-                        <span className="font-medium">41.56%</span>
+                          <span className="font-medium">
+                            {portfolioAllocation.allocationSummary.riskProfile?.highRisk?.toFixed(2) || '0.00'}%
+                          </span>
                       </div>
                       <div className="flex justify-between">
                         <span>Medium Risk (Stocks)</span>
-                        <span className="font-medium">25.43%</span>
+                          <span className="font-medium">
+                            {portfolioAllocation.allocationSummary.riskProfile?.mediumRisk?.toFixed(2) || '0.00'}%
+                          </span>
                       </div>
                       <div className="flex justify-between">
                         <span>Low Risk (ETFs)</span>
-                        <span className="font-medium">31.41%</span>
+                          <span className="font-medium">
+                            {portfolioAllocation.allocationSummary.riskProfile?.lowRisk?.toFixed(2) || '0.00'}%
+                          </span>
                       </div>
                     </div>
                   </div>
@@ -776,19 +700,31 @@ const Dashboard = () => {
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
                         <span>Total Assets</span>
-                        <span className="font-medium">{holdings?.length || 0}</span>
+                          <span className="font-medium">
+                            {portfolioAllocation.allocationSummary.diversification?.totalAssets || 0}
+                          </span>
                       </div>
                       <div className="flex justify-between">
                         <span>Sectors</span>
-                        <span className="font-medium">5</span>
+                          <span className="font-medium">
+                            {portfolioAllocation.allocationSummary.diversification?.sectors || 0}
+                          </span>
                       </div>
                       <div className="flex justify-between">
                         <span>Largest Holding</span>
-                        <span className="font-medium">17.75%</span>
+                          <span className="font-medium">
+                            {portfolioAllocation.allocationSummary.diversification?.largestHolding?.percentage?.toFixed(2) || '0.00'}%
+                          </span>
                       </div>
                     </div>
                   </div>
                 </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <p className="text-sm">No allocation data available</p>
+                    <p className="text-xs text-gray-400 mt-1">Add holdings to see allocation summary</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -802,8 +738,179 @@ const Dashboard = () => {
             />
           </TabsContent>
 
-          <TabsContent value="spy-comparison">
-            <SPYComparison comparison={spyComparison} performanceData={performanceHistory} />
+          <TabsContent value="spy-comparison" className="space-y-6">
+            {/* Summary Cards Row (Three cards) */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Your Portfolio card */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm text-gray-600">Your Portfolio</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-gray-900">
+                    {formatCurrency(spyComparison?.portfolioValue || portfolioSummary?.currentValue || 0)}
+                  </div>
+                  <div className={`text-lg font-semibold mt-2 ${getChangeColor(spyComparison?.portfolioReturnPct || 0)}`}>
+                    {formatPercent(spyComparison?.portfolioReturnPct || portfolioSummary?.returnPct || 0)} return
+                  </div>
+                  <div className="text-sm text-gray-600 mt-1">
+                    Invested: {formatCurrency(spyComparison?.portfolioValue ? (spyComparison.portfolioValue / (1 + (spyComparison.portfolioReturnPct || 0) / 100)) : portfolioSummary?.costBasis || 0)}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* SPY (S&P 500) card */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm text-gray-600">SPY (S&P 500)</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-gray-900">
+                    {formatCurrency(spyComparison?.spyValue || 0)}
+                  </div>
+                  <div className={`text-lg font-semibold mt-2 ${getChangeColor(spyComparison?.spyReturnPct || 0)}`}>
+                    {formatPercent(spyComparison?.spyReturnPct || 0)} return
+                  </div>
+                  <div className="text-sm text-gray-600 mt-1">
+                    Invested: {formatCurrency(spyComparison?.spyValue ? (spyComparison.spyValue / (1 + (spyComparison.spyReturnPct || 0) / 100)) : portfolioSummary?.costBasis || 0)}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Outperformance card */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm text-gray-600">Outperformance</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className={`text-2xl font-bold ${getChangeColor(spyComparison?.outperformancePct || 0)}`}>
+                    {formatPercent(spyComparison?.outperformancePct || 0)}
+                  </div>
+                  <div className={`text-lg font-semibold mt-2 ${getChangeColor(spyComparison?.outperformanceValue || 0)}`}>
+                    {formatCurrency(Math.abs(spyComparison?.outperformanceValue || 0))} {spyComparison?.outperformanceValue >= 0 ? 'ahead' : 'behind'} SPY
+                  </div>
+                  <div className="text-sm text-gray-600 mt-1">
+                    {spyComparison?.outperformancePct >= 0 ? 'Outperforming' : 'Underperforming'} benchmark
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Portfolio vs SPY Performance (Middle chart) */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Portfolio vs SPY Performance</CardTitle>
+                <p className="text-sm text-gray-600 mt-1">
+                  Comparison of your portfolio performance against the S&P 500 index over time
+                </p>
+              </CardHeader>
+              <CardContent>
+                {portfolioPerformance?.portfolioVsSpy && portfolioPerformance.portfolioVsSpy.length > 0 ? (
+                  <>
+                    <PerformanceChart 
+                      data={portfolioPerformance.portfolioVsSpy.map(p => ({
+                        date: p.date,
+                        portfolio: p.portfolio,
+                        spy: p.spy
+                      }))} 
+                      showComparison={true} 
+                    />
+                    <div className="flex justify-center space-x-6 mt-4 text-sm">
+                      <span className="text-gray-600">
+                        Your Portfolio {formatCurrency(portfolioSummary?.currentValue || 0)}
+                      </span>
+                      <span className="text-gray-600">
+                        SPY {formatCurrency(spyComparison?.spyValue || 0)}
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="h-64 flex items-center justify-center text-gray-500">
+                    <div className="text-center">
+                      <BarChart3 className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                      <p className="text-sm">No comparison data yet</p>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Analysis Section (Bottom) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* A. Key Metrics */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Key Metrics</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Initial Investment</span>
+                      <span className="font-medium">{formatCurrency(portfolioSummary?.costBasis || 0)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Portfolio Value</span>
+                      <span className="font-medium">{formatCurrency(portfolioSummary?.currentValue || 0)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">SPY Value</span>
+                      <span className="font-medium">{formatCurrency(spyComparison?.spyValue || 0)}</span>
+                    </div>
+                    <div className="flex justify-between pt-2 border-t">
+                      <span className="text-sm font-medium text-gray-900">Difference</span>
+                      <span className={`font-medium ${getChangeColor(spyComparison?.outperformanceValue || 0)}`}>
+                        {formatCurrency(spyComparison?.outperformanceValue || 0)}
+                      </span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* B. Investment Insights */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Investment Insights</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {spyComparison ? (
+                    <div className="text-sm text-gray-700 space-y-2">
+                      {spyComparison.outperformancePct > 0 ? (
+                        <>
+                          <p>
+                            Your portfolio is <strong className="text-emerald-600">outperforming</strong> SPY by {formatPercent(Math.abs(spyComparison.outperformancePct))}.
+                          </p>
+                          <p>
+                            This may indicate strong stock selection and effective portfolio management. Consider maintaining your current strategy while monitoring for any overconcentration risks.
+                          </p>
+                        </>
+                      ) : spyComparison.outperformancePct < 0 ? (
+                        <>
+                          <p>
+                            Your portfolio is <strong className="text-red-600">underperforming</strong> SPY by {formatPercent(Math.abs(spyComparison.outperformancePct))}.
+                          </p>
+                          <p>
+                            Consider reviewing your asset allocation, diversifying across sectors, or evaluating individual holdings that may be dragging performance.
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <p>
+                            Your portfolio performance is <strong>aligned</strong> with the S&P 500 benchmark.
+                          </p>
+                          <p>
+                            This suggests your portfolio is tracking market performance. Consider reviewing opportunities for diversification or optimization.
+                          </p>
+                        </>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-sm text-gray-500">
+                      <p>Add holdings to see investment insights and analysis.</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
         </Tabs>
       </div>

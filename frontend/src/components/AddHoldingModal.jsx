@@ -171,10 +171,56 @@ const AddHoldingModal = ({ onHoldingAdded }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.symbol || !formData.name || !formData.type || !formData.shares || !formData.avg_cost || !formData.platform) {
+    // Validate required fields
+    if (!formData.symbol || !formData.symbol.trim()) {
       toast({
-        title: "Missing Information",
-        description: "Please fill in all required fields including platform",
+        title: "Missing Symbol",
+        description: "Please enter a stock or crypto symbol",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!formData.name || !formData.name.trim()) {
+      toast({
+        title: "Missing Name",
+        description: "Please enter the company or asset name",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!formData.type) {
+      toast({
+        title: "Missing Asset Type",
+        description: "Please select an asset type (Stock, Crypto, or Roth IRA)",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!formData.shares || parseFloat(formData.shares) <= 0) {
+      toast({
+        title: "Invalid Shares",
+        description: "Please enter a valid number of shares/units greater than 0",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!formData.avg_cost || parseFloat(formData.avg_cost) <= 0) {
+      toast({
+        title: "Invalid Cost",
+        description: "Please enter a valid average cost per share greater than 0",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!formData.platform || !formData.platform.trim()) {
+      toast({
+        title: "Missing Platform",
+        description: "Please select a platform/account where this asset is held",
         variant: "destructive"
       });
       return;
@@ -184,18 +230,23 @@ const AddHoldingModal = ({ onHoldingAdded }) => {
 
     try {
       const payload = {
-        symbol: formData.symbol.toUpperCase(),
-        name: formData.name,
+        symbol: formData.symbol.toUpperCase().trim(),
+        name: formData.name.trim(),
         type: formData.type,
         shares: parseFloat(formData.shares),
         avg_cost: parseFloat(formData.avg_cost),
-        sector: formData.sector || null,
-        platform: formData.platform
+        sector: formData.sector?.trim() || null,
+        platform: formData.platform.trim()
       };
 
+      console.log('Submitting holding:', payload);
+
       const response = await axios.post(`${API}/holdings`, payload, {
-        withCredentials: true
+        withCredentials: true,
+        timeout: 30000  // 30 second timeout
       });
+
+      console.log('Holding added successfully:', response.data);
 
       toast({
         title: "Holding Added",
@@ -222,9 +273,26 @@ const AddHoldingModal = ({ onHoldingAdded }) => {
       }
 
     } catch (error) {
+      console.error('Error adding holding:', error);
+      console.error('Error response:', error.response?.data);
+      
+      let errorMessage = "An error occurred while adding the holding";
+      
+      if (error.response?.data?.detail) {
+        errorMessage = error.response.data.detail;
+      } else if (error.response?.status === 401) {
+        errorMessage = "Please log in to add holdings";
+      } else if (error.response?.status === 400) {
+        errorMessage = error.response.data?.detail || "Invalid data. Please check your inputs.";
+      } else if (error.code === 'ECONNABORTED') {
+        errorMessage = "Request timed out. Please try again.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
       toast({
         title: "Failed to Add Holding",
-        description: error.response?.data?.detail || "An error occurred while adding the holding",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
@@ -336,32 +404,35 @@ const AddHoldingModal = ({ onHoldingAdded }) => {
           {formData.type && (
             <div className="space-y-2">
               <Label htmlFor="platform">Platform/Account *</Label>
-              <Select value={formData.platform} onValueChange={(value) => handleInputChange('platform', value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select where this asset is held" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availablePlatforms.map((platform) => (
-                    <SelectItem key={platform} value={platform}>
-                      {platform}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {availablePlatforms.length > 0 ? (
+                <Select value={formData.platform} onValueChange={(value) => handleInputChange('platform', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select where this asset is held" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availablePlatforms.map((platform) => (
+                      <SelectItem key={platform} value={platform}>
+                        {platform}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input
+                  id="platform"
+                  placeholder="Enter platform name (e.g., Robinhood, Coinbase)"
+                  value={formData.platform}
+                  onChange={(e) => handleInputChange('platform', e.target.value)}
+                  required
+                />
+              )}
+              {formData.type && availablePlatforms.length === 0 && (
+                <p className="text-xs text-gray-500">
+                  Enter the platform or account where this asset is held
+                </p>
+              )}
             </div>
           )}
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="sector">Sector (Optional)</Label>
-              <Input
-                id="sector"
-                placeholder="e.g., Technology, Healthcare"
-                value={formData.sector}
-                onChange={(e) => handleInputChange('sector', e.target.value)}
-              />
-            </div>
-          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -370,9 +441,11 @@ const AddHoldingModal = ({ onHoldingAdded }) => {
                 id="shares"
                 type="number"
                 step="0.00000001"
+                min="0"
                 placeholder="e.g., 10 or 0.5"
                 value={formData.shares}
                 onChange={(e) => handleInputChange('shares', e.target.value)}
+                required
               />
             </div>
 
@@ -382,9 +455,11 @@ const AddHoldingModal = ({ onHoldingAdded }) => {
                 id="avg_cost"
                 type="number"
                 step="0.01"
+                min="0"
                 placeholder="e.g., 150.00"
                 value={formData.avg_cost}
                 onChange={(e) => handleInputChange('avg_cost', e.target.value)}
+                required
               />
             </div>
           </div>

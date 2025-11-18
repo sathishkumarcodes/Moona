@@ -7,8 +7,18 @@ const ContributionChart = ({ data, title = "Monthly Contributions" }) => {
       currency: 'USD',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
-    }).format(amount);
+    }).format(amount || 0);
   };
+
+  if (!data || data.length === 0) {
+    return (
+      <div className="h-64 flex items-center justify-center text-gray-500">
+        <div className="text-center">
+          <p className="text-sm">No contribution data available</p>
+        </div>
+      </div>
+    );
+  }
 
   // Chart dimensions
   const width = 500;
@@ -18,10 +28,11 @@ const ContributionChart = ({ data, title = "Monthly Contributions" }) => {
   const chartHeight = height - margin.top - margin.bottom;
 
   // Calculate scales
-  const maxValue = Math.max(...data.map(d => d.amount));
-  const minValue = Math.min(...data.map(d => d.amount));
+  const amounts = data.map(d => d.amount || 0);
+  const maxValue = Math.max(...amounts, 1);
+  const minValue = Math.min(...amounts, 0);
   const valueRange = maxValue - minValue;
-  const padding = valueRange * 0.1;
+  const padding = valueRange * 0.1 || 1;
 
   const xScale = (index) => (index / (data.length - 1)) * chartWidth;
   const yScale = (value) => chartHeight - ((value - minValue + padding) / (valueRange + 2 * padding)) * chartHeight;

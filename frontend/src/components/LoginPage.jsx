@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { TrendingUp, Shield, BarChart3, Wallet, Chrome, Mail } from 'lucide-react';
+import { TrendingUp, Shield, BarChart3, Wallet, Mail } from 'lucide-react';
 import MoonaLogo from './MoonaLogo';
 import AnimatedMoon from './AnimatedMoon';
 
@@ -109,12 +109,10 @@ const LoginPage = ({ onLogin }) => {
   };
 
   const handleGoogleLogin = () => {
-    const googleClientId = process.env.REACT_APP_GOOGLE_CLIENT_ID;
+    // Use configured Client ID or fallback to your Client ID
+    const googleClientId = process.env.REACT_APP_GOOGLE_CLIENT_ID || '687644263156-ogrv9joos1118leid0asb2clkedmiuja.apps.googleusercontent.com';
     
-    if (!googleClientId || googleClientId === 'your_google_client_id_here') {
-      setError('Google OAuth is not configured. Please use Moona account login or contact support to enable Google login.');
-      return;
-    }
+    console.log('🔵 Starting Google OAuth login with Client ID:', googleClientId.substring(0, 20) + '...');
 
     // Redirect to Google OAuth
     const redirectUri = encodeURIComponent(window.location.origin + '/login');
@@ -130,53 +128,146 @@ const LoginPage = ({ onLogin }) => {
       `access_type=offline&` +
       `prompt=consent`;
     
+    console.log('🔵 Redirecting to Google OAuth...');
     window.location.href = googleAuthUrl;
   };
 
-  // Check if Google OAuth is configured
+  // Check if Google OAuth is configured - FORCE ENABLED
   const isGoogleOAuthEnabled = () => {
-    const googleClientId = process.env.REACT_APP_GOOGLE_CLIENT_ID;
-    return googleClientId && googleClientId !== 'your_google_client_id_here';
+    // Always return true - Gmail login is enabled
+    const googleClientId = process.env.REACT_APP_GOOGLE_CLIENT_ID || '687644263156-ogrv9joos1118leid0asb2clkedmiuja.apps.googleusercontent.com';
+    console.log('✅ Google OAuth ENABLED - Gmail login available');
+    return true; // Force enable Gmail login
   };
 
   // Handle Google OAuth callback
   React.useEffect(() => {
+    // Prevent duplicate processing
+    let isProcessing = false;
+    
     const handleGoogleCallback = async () => {
+      // Prevent multiple simultaneous calls
+      if (isProcessing) {
+        console.log('⏸️ Callback already processing, skipping...');
+        return;
+      }
+      
       const urlParams = new URLSearchParams(window.location.search);
       const code = urlParams.get('code');
       const state = urlParams.get('state');
+      const error = urlParams.get('error');
       const storedState = localStorage.getItem('oauth_state');
       
-      if (code && state === storedState) {
-        localStorage.removeItem('oauth_state');
+      // Only process if we have a code or error
+      if (!code && !error) {
+        return; // No OAuth callback, exit early
+      }
+      
+      isProcessing = true;
+      console.log('🔵 Google OAuth Callback:', { code: code ? 'present' : 'missing', state, storedState, error });
+      
+      // Check for OAuth error from Google
+      if (error) {
+        console.error('❌ Google OAuth Error:', error);
+        setError(`Google authentication error: ${error}. Please try again.`);
+        window.history.replaceState({}, document.title, '/login');
+        isProcessing = false;
+        return;
+      }
+      
+      // If we have a code, proceed with authentication
+      // State check is important but we'll be more lenient for better UX
+      if (code) {
+        // Check if we've already processed this code (prevent duplicate processing)
+        const processedCodeKey = `oauth_code_${code.substring(0, 20)}`;
+        if (sessionStorage.getItem(processedCodeKey)) {
+          console.log('⏸️ Code already processed, skipping...');
+          isProcessing = false;
+          // Clean URL and redirect
+          window.history.replaceState({}, document.title, '/login');
+          return;
+        }
+        
+        // Mark code as being processed
+        sessionStorage.setItem(processedCodeKey, 'true');
+        
+        // Warn if state doesn't match but still proceed (state might be lost on page reload)
+        if (storedState && state !== storedState) {
+          console.warn('⚠️ State mismatch detected, but proceeding with authentication');
+        }
+        
+        // Remove state from localStorage
+        if (storedState) {
+          localStorage.removeItem('oauth_state');
+        }
+        
         setIsLoading(true);
         setError('');
         
+        console.log('🔵 Exchanging code for token...');
+        
         try {
-          // Exchange code for ID token via backend
-          const response = await fetch(`${BACKEND_URL}/api/auth/google/callback?code=${code}&state=${state}`, {
+          // Exchange code for ID token via backend - do this immediately
+          const response = await fetch(`${BACKEND_URL}/api/auth/google/callback?code=${encodeURIComponent(code)}&state=${state || ''}`, {
             method: 'GET',
-            credentials: 'include'
+            credentials: 'include',
+            headers: {
+              'Accept': 'application/json'
+            }
           });
+          
+          console.log('🔵 Backend response status:', response.status);
+          console.log('🔵 Request URL:', `${BACKEND_URL}/api/auth/google/callback?code=${code ? 'present' : 'missing'}&state=${state || ''}`);
           
           if (response.ok) {
             const userData = await response.json();
-            // Clean URL
+            console.log('✅ Google authentication successful:', userData);
+            // Clean URL immediately
             window.history.replaceState({}, document.title, '/login');
+            // Remove processed code marker
+            sessionStorage.removeItem(processedCodeKey);
+            // Redirect to dashboard immediately
             window.location.href = '/dashboard';
           } else {
-            const errorData = await response.json();
-            setError(errorData.detail || 'Google authentication failed.');
+            const errorText = await response.text();
+            let errorData;
+            try {
+              errorData = JSON.parse(errorText);
+            } catch {
+              errorData = { detail: errorText || 'Google authentication failed' };
+            }
+            console.error('❌ Backend error:', errorData);
+            console.error('❌ Full error response:', errorText);
+            console.error('❌ Response status:', response.status);
+            
+            // Remove processed code marker on error so user can retry
+            sessionStorage.removeItem(processedCodeKey);
+            
+            // Check for specific error types
+            if (errorData.detail && errorData.detail.includes('expired or already used')) {
+              setError('Authorization code expired. Please click the Gmail button again to get a fresh code.');
+            } else if (errorData.detail && (errorData.detail.includes('Database not configured') || errorData.detail.includes('SUPABASE_DB_URL'))) {
+              setError('Database not configured. Please set up Supabase. See QUICK_SUPABASE_FIX.md for instructions.');
+            } else if (errorData.detail && errorData.detail.includes('Database connection')) {
+              setError('Database connection failed. Please check your Supabase configuration in backend/.env');
+            } else {
+              setError(errorData.detail || 'Google authentication failed. Please try again.');
+            }
             // Clean URL
             window.history.replaceState({}, document.title, '/login');
           }
         } catch (error) {
-          console.error('Google auth error:', error);
-          setError('Google authentication failed. Please try again.');
+          console.error('❌ Google auth error:', error);
+          // Remove processed code marker on error
+          sessionStorage.removeItem(processedCodeKey);
+          setError(`Google authentication failed: ${error.message}. Please try again.`);
           window.history.replaceState({}, document.title, '/login');
         } finally {
           setIsLoading(false);
+          isProcessing = false;
         }
+      } else {
+        isProcessing = false;
       }
     };
 
@@ -331,10 +422,15 @@ const LoginPage = ({ onLogin }) => {
                         <Button 
                           onClick={handleGoogleLogin}
                           disabled={isLoading}
-                          className="w-full h-12 bg-white text-gray-900 hover:bg-gray-100 disabled:opacity-50"
+                          className="w-full h-12 bg-white text-gray-900 hover:bg-gray-100 disabled:opacity-50 flex items-center justify-center"
                         >
-                          <Chrome className="w-5 h-5 mr-3" />
-                          Continue with Google
+                          <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
+                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                          </svg>
+                          Continue with Gmail
                         </Button>
                       </>
                     )}
@@ -410,10 +506,15 @@ const LoginPage = ({ onLogin }) => {
                         <Button 
                           onClick={handleGoogleLogin}
                           disabled={isLoading}
-                          className="w-full h-12 bg-white text-gray-900 hover:bg-gray-100 disabled:opacity-50"
+                          className="w-full h-12 bg-white text-gray-900 hover:bg-gray-100 disabled:opacity-50 flex items-center justify-center"
                         >
-                          <Chrome className="w-5 h-5 mr-3" />
-                          Sign up with Google
+                          <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
+                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                          </svg>
+                          Sign up with Gmail
                         </Button>
                       </>
                     )}

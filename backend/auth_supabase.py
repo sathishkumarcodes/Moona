@@ -383,7 +383,7 @@ async def get_current_user(request: Request):
                 session_token = auth_header.split(" ")[1]
         
         if not session_token:
-            raise HTTPException(status_code=401, detail="No session token found")
+            return {"user": None}
         
         pool = await get_db_pool()
         
@@ -395,7 +395,7 @@ async def get_current_user(request: Request):
         )
         
         if not session:
-            raise HTTPException(status_code=401, detail="Invalid or expired session")
+            return {"user": None}
         
         return {
             "user": {

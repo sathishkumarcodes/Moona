@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Search, Filter, TrendingUp, TrendingDown, Edit3, Trash2, MoreVertical } from 'lucide-react';
+import { Search, Filter, TrendingUp, TrendingDown, Edit3, Trash2, MoreVertical, Wallet } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { useToast } from '../hooks/use-toast';
 import axios from 'axios';
@@ -20,8 +20,22 @@ const InvestmentList = ({ investments, onEdit, onDelete, isLoading }) => {
   const [deletingId, setDeletingId] = useState(null);
   const { toast } = useToast();
 
+  // Safety check for investments
+  const safeInvestments = investments || [];
+  
+  // Debug logging
+  useEffect(() => {
+    console.log('InvestmentList - investments:', investments);
+    console.log('InvestmentList - safeInvestments:', safeInvestments);
+    console.log('InvestmentList - safeInvestments.length:', safeInvestments.length);
+    console.log('InvestmentList - isLoading:', isLoading);
+    if (safeInvestments.length > 0) {
+      console.log('InvestmentList - First investment:', safeInvestments[0]);
+    }
+  }, [investments, isLoading, safeInvestments]);
+  
   // Get unique platforms for filtering
-  const uniquePlatforms = [...new Set(investments?.map(inv => inv.platform).filter(Boolean))].sort();
+  const uniquePlatforms = [...new Set(safeInvestments.map(inv => inv?.platform).filter(Boolean))].sort();
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-US', {
@@ -71,10 +85,11 @@ const InvestmentList = ({ investments, onEdit, onDelete, isLoading }) => {
     }
   };
 
-  const filteredInvestments = investments
+  const filteredInvestments = safeInvestments
     .filter(investment => {
-      const matchesSearch = investment.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           investment.symbol.toLowerCase().includes(searchTerm.toLowerCase());
+      if (!investment) return false;
+      const matchesSearch = (investment.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           (investment.symbol || '').toLowerCase().includes(searchTerm.toLowerCase());
       const matchesType = filterType === 'all' || investment.type === filterType;
       const matchesPlatform = filterPlatform === 'all' || investment.platform === filterPlatform;
       return matchesSearch && matchesType && matchesPlatform;
@@ -82,15 +97,23 @@ const InvestmentList = ({ investments, onEdit, onDelete, isLoading }) => {
     .sort((a, b) => {
       switch (sortBy) {
         case 'value':
-          return b.total_value - a.total_value;
+          return (b.total_value || 0) - (a.total_value || 0);
         case 'gainLoss':
-          return b.gain_loss_percent - a.gain_loss_percent;
+          return (b.gain_loss_percent || 0) - (a.gain_loss_percent || 0);
         case 'symbol':
-          return a.symbol.localeCompare(b.symbol);
+          return (a.symbol || '').localeCompare(b.symbol || '');
         default:
           return 0;
       }
     });
+  
+  // Debug filtered results
+  useEffect(() => {
+    console.log('InvestmentList - filteredInvestments.length:', filteredInvestments.length);
+    console.log('InvestmentList - searchTerm:', searchTerm);
+    console.log('InvestmentList - filterType:', filterType);
+    console.log('InvestmentList - filterPlatform:', filterPlatform);
+  }, [filteredInvestments.length, searchTerm, filterType, filterPlatform]);
 
   return (
     <Card>
@@ -147,9 +170,9 @@ const InvestmentList = ({ investments, onEdit, onDelete, isLoading }) => {
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <div className="space-y-4">
+          <div className="space-y-2">
             {[...Array(3)].map((_, i) => (
-              <div key={i} className="border border-gray-200 rounded-lg p-4">
+              <div key={i} className="border border-gray-200 rounded-lg p-3">
                 <div className="animate-pulse">
                   <div className="flex items-center space-x-4">
                     <div className="w-12 h-12 bg-gray-200 rounded-full"></div>
@@ -163,81 +186,93 @@ const InvestmentList = ({ investments, onEdit, onDelete, isLoading }) => {
             ))}
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-2">
             {filteredInvestments.map((investment) => (
               <div
                 key={investment.id}
-                className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow duration-200"
+                className="border border-gray-200 rounded-lg p-3 hover:shadow-sm hover:border-gray-300 transition-all duration-200 bg-white"
               >
-                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-3 lg:space-y-0">
-                  <div className="flex items-center space-x-4">
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-2 lg:space-y-0">
+                  <div className="flex items-center space-x-3">
                     <div className="flex-shrink-0">
-                      <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
-                        <span className="text-sm font-bold text-gray-700">
-                          {investment.symbol.substring(0, 2)}
+                      <div className="w-10 h-10 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg flex items-center justify-center border border-blue-100">
+                        <span className="text-xs font-bold text-blue-700">
+                          {(investment.symbol || '').substring(0, 2).toUpperCase()}
                         </span>
                       </div>
                     </div>
-                    <div>
-                      <div className="flex items-center space-x-2">
-                        <h3 className="font-semibold text-gray-900">{investment.symbol}</h3>
-                        <Badge variant="outline" className="text-xs">
-                          {investment.type.toUpperCase().replace('_', ' ')}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center space-x-2 flex-wrap">
+                        <h3 className="font-semibold text-gray-900 text-sm">{investment.symbol || 'N/A'}</h3>
+                        <Badge variant="outline" className="text-xs px-1.5 py-0">
+                          {(investment.type || 'stock').toUpperCase().replace('_', ' ')}
                         </Badge>
                       </div>
-                      <p className="text-sm text-gray-600">{investment.name}</p>
-                      <div className="flex items-center space-x-2">
-                        <p className="text-xs text-gray-500">{investment.sector}</p>
-                        {investment.platform && (
+                      <p className="text-xs text-gray-600 truncate">{investment.name || investment.symbol || 'Unknown'}</p>
+                      <div className="flex items-center space-x-1.5 mt-0.5">
+                        {investment.sector && (
                           <>
-                            <span className="text-xs text-gray-400">•</span>
-                            <div className="flex items-center space-x-1">
-                              <span className="text-xs text-blue-600 font-medium bg-blue-50 px-2 py-0.5 rounded-full">
-                                {investment.platform}
-                              </span>
-                            </div>
+                            <p className="text-xs text-gray-500">{investment.sector}</p>
+                            {investment.platform && <span className="text-xs text-gray-400">•</span>}
                           </>
+                        )}
+                        {investment.platform && (
+                          <span className="text-xs text-blue-600 font-medium bg-blue-50 px-1.5 py-0.5 rounded">
+                            {investment.platform}
+                          </span>
                         )}
                       </div>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 lg:gap-6">
+                  <div className="grid grid-cols-2 lg:grid-cols-7 gap-3 lg:gap-4 mt-2 lg:mt-0">
                     <div>
-                      <p className="text-xs text-gray-500 mb-1">Shares/Units</p>
-                      <p className="font-medium">{investment.shares}</p>
+                      <p className="text-xs text-gray-500 mb-0.5">Asset Type</p>
+                      <p className="font-medium text-sm capitalize">{investment.type?.replace('_', ' ') || 'N/A'}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500 mb-1">Current Price</p>
-                      <p className="font-medium">{formatCurrency(investment.current_price)}</p>
+                      <p className="text-xs text-gray-500 mb-0.5">Platform</p>
+                      <p className="font-medium text-sm">{investment.platform || 'N/A'}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500 mb-1">Total Value</p>
-                      <p className="font-semibold">{formatCurrency(investment.total_value)}</p>
+                      <p className="text-xs text-gray-500 mb-0.5">Cost Basis</p>
+                      <p className="font-medium text-sm">{formatCurrency(investment.total_cost || 0)}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500 mb-1">Gain/Loss</p>
-                      <div className="flex items-center space-x-2">
-                        <span className={`font-semibold ${getChangeColor(investment.gain_loss)}`}>
-                          {formatCurrency(investment.gain_loss)}
+                      <p className="text-xs text-gray-500 mb-0.5">Current Value</p>
+                      <p className="font-semibold text-sm">{formatCurrency(investment.total_value || 0)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 mb-0.5">Gain/Loss</p>
+                      <div className="flex items-center space-x-0.5">
+                        {investment.gain_loss >= 0 ? (
+                          <TrendingUp className="w-3 h-3 text-emerald-600" />
+                        ) : (
+                          <TrendingDown className="w-3 h-3 text-red-600" />
+                        )}
+                        <span className={`font-semibold text-sm ${getChangeColor(investment.gain_loss || 0)}`}>
+                          {formatCurrency(investment.gain_loss || 0)}
                         </span>
-                        <Badge variant="outline" className={getChangeBgColor(investment.gain_loss)}>
-                          <span className={`flex items-center ${getChangeColor(investment.gain_loss)}`}>
-                            {investment.gain_loss >= 0 ? (
-                              <TrendingUp className="w-3 h-3 mr-1" />
-                            ) : (
-                              <TrendingDown className="w-3 h-3 mr-1" />
-                            )}
-                            {formatPercent(investment.gain_loss_percent)}
-                          </span>
-                        </Badge>
                       </div>
                     </div>
-                    <div className="flex justify-end">
+                    <div>
+                      <p className="text-xs text-gray-500 mb-0.5">Return %</p>
+                      <Badge variant="outline" className={`text-xs px-1.5 py-0 ${getChangeBgColor(investment.gain_loss_percent || 0)}`}>
+                        <span className={`flex items-center ${getChangeColor(investment.gain_loss_percent || 0)}`}>
+                          {investment.gain_loss_percent >= 0 ? (
+                            <TrendingUp className="w-3 h-3 mr-0.5" />
+                          ) : (
+                            <TrendingDown className="w-3 h-3 mr-0.5" />
+                          )}
+                          {formatPercent(investment.gain_loss_percent || 0)}
+                        </span>
+                      </Badge>
+                    </div>
+                    <div className="flex justify-end items-start">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                            <MoreVertical className="h-4 w-4" />
+                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 hover:bg-gray-100">
+                            <MoreVertical className="h-3.5 w-3.5" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
@@ -270,10 +305,23 @@ const InvestmentList = ({ investments, onEdit, onDelete, isLoading }) => {
           </div>
         )}
 
-        {filteredInvestments.length === 0 && (
-        <div className="text-center py-8">
-          <p className="text-gray-500">No investments found matching your criteria.</p>
-        </div>
+        {!isLoading && filteredInvestments.length === 0 && safeInvestments.length === 0 && (
+          <div className="text-center py-12">
+            <div className="max-w-md mx-auto">
+              <Wallet className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">No investments yet</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Start building your portfolio by adding your first investment.
+              </p>
+            </div>
+          </div>
+        )}
+        
+        {!isLoading && filteredInvestments.length === 0 && safeInvestments.length > 0 && (
+          <div className="text-center py-8">
+            <p className="text-gray-500">No investments found matching your criteria.</p>
+            <p className="text-sm text-gray-400 mt-2">Try adjusting your search or filters.</p>
+          </div>
         )}
       </CardContent>
     </Card>

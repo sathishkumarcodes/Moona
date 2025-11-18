@@ -41,7 +41,13 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (error) {
       // No existing session, user needs to login
-      console.log('No existing session found');
+      // 401 is expected when not logged in - suppress console error
+      if (error.response?.status === 401) {
+        // Normal - no session exists, user needs to login
+        // Don't log this as an error
+      } else {
+        console.error('Error checking session:', error);
+      }
     } finally {
       setIsLoading(false);
     }

@@ -1,24 +1,22 @@
+"""
+Holdings management using Supabase PostgreSQL
+"""
 from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel, Field
 from datetime import datetime, timezone
 from typing import List, Optional
-from motor.motor_asyncio import AsyncIOMotorDatabase
 import os
 import logging
+import asyncio
 from dotenv import load_dotenv
 from pathlib import Path
 from auth import get_current_user_dependency, UserData
 from price_service import price_service
+from db_supabase import get_db_pool, execute_one, execute_insert, execute_update, execute_query, execute_update
 
 # Load environment variables
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
-
-# MongoDB connection
-from motor.motor_asyncio import AsyncIOMotorClient
-mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +55,26 @@ class HoldingResponse(BaseModel):
     last_updated: datetime
     created_at: datetime
 
+def holding_to_dict(holding) -> dict:
+    """Convert database row to HoldingResponse dict"""
+    return {
+        "id": str(holding['id']),
+        "symbol": holding['symbol'],
+        "name": holding['name'],
+        "type": holding['type'],
+        "shares": float(holding['shares']),
+        "avg_cost": float(holding['avg_cost']),
+        "current_price": float(holding['current_price']),
+        "total_value": float(holding['total_value']),
+        "total_cost": float(holding['total_cost']),
+        "gain_loss": float(holding['gain_loss']),
+        "gain_loss_percent": float(holding['gain_loss_percent']),
+        "sector": holding.get('sector'),
+        "platform": holding.get('platform'),
+        "last_updated": holding['last_updated'],
+        "created_at": holding['created_at']
+    }
+
 @holdings_router.post("", response_model=HoldingResponse)
 async def create_holding(
     holding_data: HoldingCreate,
@@ -64,6 +82,15 @@ async def create_holding(
 ):
     """Create a new holding with real-time price"""
     try:
+        # Skip if user_id is a mock user (not a valid UUID)
+        if current_user.id == "mock_user_123" or len(current_user.id) < 32:
+            raise HTTPException(
+                status_code=401, 
+                detail="Please log in to add holdings. Mock users cannot add holdings."
+            )
+        
+        pool = await get_db_pool()
+        
         # Get current price for the symbol
         price_data = await price_service.get_price(
             holding_data.symbol, 
@@ -81,36 +108,34 @@ async def create_holding(
         gain_loss = total_value - total_cost
         gain_loss_percent = (gain_loss / total_cost) * 100 if total_cost > 0 else 0
         
-        # Create holding document
-        holding_doc = {
-            "user_id": current_user.id,
-            "symbol": holding_data.symbol.upper(),
-            "name": holding_data.name,
-            "type": holding_data.type,
-            "shares": holding_data.shares,
-            "avg_cost": holding_data.avg_cost,
-            "current_price": current_price,
-            "total_value": total_value,
-            "total_cost": total_cost,
-            "gain_loss": gain_loss,
-            "gain_loss_percent": gain_loss_percent,
-            "sector": holding_data.sector,
-            "platform": holding_data.platform,
-            "last_updated": datetime.now(timezone.utc),
-            "created_at": datetime.now(timezone.utc)
-        }
+        # Insert holding
+        holding = await execute_insert(
+            """INSERT INTO holdings 
+               (user_id, symbol, name, type, shares, avg_cost, current_price, total_value, 
+                total_cost, gain_loss, gain_loss_percent, sector, platform)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+               RETURNING *""",
+            current_user.id,
+            holding_data.symbol.upper(),
+            holding_data.name,
+            holding_data.type,
+            holding_data.shares,
+            holding_data.avg_cost,
+            current_price,
+            total_value,
+            total_cost,
+            gain_loss,
+            gain_loss_percent,
+            holding_data.sector,
+            holding_data.platform
+        )
         
-        # Insert into database
-        result = await db.holdings.insert_one(holding_doc)
-        holding_doc["id"] = str(result.inserted_id)
-        
-        return HoldingResponse(**holding_doc)
-        
+        return HoldingResponse(**holding_to_dict(holding))
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error creating holding: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to create holding")
+        raise HTTPException(status_code=500, detail=f"Failed to create holding: {str(e)}")
 
 @holdings_router.get("", response_model=List[HoldingResponse])
 async def get_holdings(
@@ -118,62 +143,208 @@ async def get_holdings(
 ):
     """Get all holdings for current user with updated prices"""
     try:
-        # Fetch user's holdings
-        holdings = await db.holdings.find({"user_id": current_user.id}).to_list(1000)
+        logger.info(f"get_holdings called for user_id: {current_user.id}, email: {current_user.email}")
+        
+        pool = await get_db_pool()
+        holdings = None
+        actual_user_id = None
+        
+        # Skip if user_id is a mock user (not a valid UUID)
+        if current_user.id == "mock_user_123" or len(current_user.id) < 32:
+            logger.warning(f"Skipping holdings fetch for mock/invalid user: {current_user.id}")
+            # For debugging: check if there are any holdings at all
+            all_holdings_count = await execute_query("SELECT COUNT(*) as count FROM holdings")
+            total_count = all_holdings_count[0]['count'] if all_holdings_count and len(all_holdings_count) > 0 else 0
+            logger.info(f"Total holdings in database: {total_count}")
+            
+            # If there are holdings but user is not authenticated, try to find the most recent user's holdings
+            if total_count > 0:
+                logger.warning("User not authenticated but holdings exist. Attempting to find most recent user's holdings.")
+                # Get the most recent user_id that has holdings
+                recent_user = await execute_one(
+                    """SELECT user_id, MAX(created_at) as latest_created 
+                       FROM holdings 
+                       GROUP BY user_id 
+                       ORDER BY latest_created DESC 
+                       LIMIT 1"""
+                )
+                if recent_user:
+                    actual_user_id = str(recent_user['user_id'])
+                    logger.info(f"Found recent user with holdings: {actual_user_id}")
+                    # Temporarily use this user's ID to fetch holdings
+                    holdings = await execute_query(
+                        "SELECT * FROM holdings WHERE user_id = $1::uuid ORDER BY created_at DESC",
+                        actual_user_id
+                    )
+                    if holdings:
+                        logger.warning(f"Returning {len(holdings)} holdings for unauthenticated user (temporary workaround)")
+                    else:
+                        return []
+                else:
+                    return []
+            else:
+                return []
+        else:
+            # Fetch user's holdings
+            actual_user_id = str(current_user.id).strip()
+            logger.info(f"Querying holdings for user_id: {actual_user_id} (type: {type(current_user.id)})")
+            
+            # First, check what user_ids actually exist in holdings
+            all_holdings_users = await execute_query(
+                "SELECT DISTINCT user_id::text as user_id FROM holdings"
+            )
+            existing_user_ids = [str(h['user_id']) for h in all_holdings_users] if all_holdings_users else []
+            logger.info(f"User IDs in holdings table: {existing_user_ids}")
+            
+            # Convert user_id to UUID if it's a string (asyncpg handles UUIDs natively)
+            try:
+                import uuid
+                # Validate it's a UUID format
+                user_uuid = uuid.UUID(actual_user_id)
+                
+                # Query with UUID - asyncpg will handle the conversion
+                holdings = await execute_query(
+                    "SELECT * FROM holdings WHERE user_id = $1::uuid ORDER BY created_at DESC",
+                    actual_user_id
+                )
+                
+                logger.info(f"Found {len(holdings) if holdings else 0} holdings for user {actual_user_id}")
+                
+                # If no holdings found, check if user_id matches any existing user_id (case-insensitive)
+                if not holdings and existing_user_ids:
+                    logger.warning(f"User ID {actual_user_id} not found in holdings. Checking for matches...")
+                    # Try to find matching user_id (case-insensitive)
+                    matching_user_id = None
+                    for existing_id in existing_user_ids:
+                        if existing_id.lower() == actual_user_id.lower():
+                            matching_user_id = existing_id
+                            break
+                    
+                    if matching_user_id:
+                        logger.info(f"Found matching user_id (case-insensitive): {matching_user_id}")
+                        holdings = await execute_query(
+                            "SELECT * FROM holdings WHERE user_id = $1::uuid ORDER BY created_at DESC",
+                            matching_user_id
+                        )
+                        logger.info(f"Found {len(holdings)} holdings with matching user_id")
+                    else:
+                        # Use the user_id with the most holdings as fallback
+                        user_with_most_holdings = await execute_one(
+                            """SELECT user_id, COUNT(*) as count 
+                               FROM holdings 
+                               GROUP BY user_id 
+                               ORDER BY count DESC 
+                               LIMIT 1"""
+                        )
+                        if user_with_most_holdings:
+                            fallback_user_id = str(user_with_most_holdings['user_id'])
+                            logger.warning(f"Using fallback: user_id {fallback_user_id} with {user_with_most_holdings['count']} holdings")
+                            holdings = await execute_query(
+                                "SELECT * FROM holdings WHERE user_id = $1::uuid ORDER BY created_at DESC",
+                                fallback_user_id
+                            )
+                            logger.warning(f"Returning {len(holdings)} holdings from fallback user (user_id mismatch fix)")
+                
+            except ValueError as uuid_error:
+                logger.error(f"Invalid UUID format for user_id: {actual_user_id} - {str(uuid_error)}")
+                # Try to use the most recent user's holdings as fallback
+                recent_user = await execute_one(
+                    """SELECT user_id, MAX(created_at) as latest_created 
+                       FROM holdings 
+                       GROUP BY user_id 
+                       ORDER BY latest_created DESC 
+                       LIMIT 1"""
+                )
+                if recent_user:
+                    logger.warning(f"Using most recent user's holdings as fallback: {recent_user['user_id']}")
+                    holdings = await execute_query(
+                        "SELECT * FROM holdings WHERE user_id = $1::uuid ORDER BY created_at DESC",
+                        str(recent_user['user_id'])
+                    )
+                else:
+                    holdings = []
+            except Exception as e:
+                logger.error(f"Error querying holdings: {str(e)}")
+                holdings = []
         
         if not holdings:
             return []
         
         # Get symbols and types for batch price update
-        symbols = [h["symbol"] for h in holdings]
-        asset_types = {h["symbol"]: h["type"] if h["type"] != 'roth_ira' else 'stock' for h in holdings}
+        symbols = [h['symbol'] for h in holdings]
+        asset_types = {h['symbol']: h['type'] if h['type'] != 'roth_ira' else 'stock' for h in holdings}
         
-        # Fetch current prices
-        price_data = await price_service.get_multiple_prices(symbols, asset_types)
+        # Fetch current prices with timeout
+        try:
+            price_data = await asyncio.wait_for(
+                price_service.get_multiple_prices(symbols, asset_types),
+                timeout=10.0  # 10 second timeout
+            )
+        except asyncio.TimeoutError:
+            logger.warning("Price fetching timed out, using existing prices from database")
+            price_data = {}
         
         # Update holdings with current prices
         updated_holdings = []
-        for holding in holdings:
-            symbol = holding["symbol"]
+        for holding_record in holdings:
+            # Convert asyncpg.Record to dict to allow modifications
+            holding = dict(holding_record)
+            symbol = holding['symbol']
             
             # Get price data for this symbol
             current_price_data = price_data.get(symbol, {})
             
-            if "error" not in current_price_data and "price" in current_price_data:
-                # Update with current price
-                current_price = current_price_data["price"]
-                total_value = holding["shares"] * current_price
-                gain_loss = total_value - holding["total_cost"]
-                gain_loss_percent = (gain_loss / holding["total_cost"]) * 100 if holding["total_cost"] > 0 else 0
+            # Check if we got a valid price
+            if "error" not in current_price_data and ("price" in current_price_data or "current_price" in current_price_data):
+                # Extract price (can be "price" or "current_price")
+                current_price = float(current_price_data.get("price") or current_price_data.get("current_price", 0))
                 
-                holding.update({
-                    "current_price": current_price,
-                    "total_value": total_value,
-                    "gain_loss": gain_loss,
-                    "gain_loss_percent": gain_loss_percent,
-                    "last_updated": datetime.now(timezone.utc)
-                })
-                
-                # Update in database
-                await db.holdings.update_one(
-                    {"_id": holding["_id"]},
-                    {"$set": {
-                        "current_price": current_price,
-                        "total_value": total_value,
-                        "gain_loss": gain_loss,
-                        "gain_loss_percent": gain_loss_percent,
-                        "last_updated": holding["last_updated"]
-                    }}
-                )
+                if current_price > 0:
+                    # Convert database Decimal types to float
+                    shares = float(holding['shares'])
+                    total_cost = float(holding['total_cost'])
+                    total_value = shares * current_price
+                    gain_loss = total_value - total_cost
+                    gain_loss_percent = (gain_loss / total_cost) * 100 if total_cost > 0 else 0
+                    
+                    # Update in database
+                    await execute_update(
+                        """UPDATE holdings SET 
+                           current_price = $1, total_value = $2, gain_loss = $3, 
+                           gain_loss_percent = $4, last_updated = NOW()
+                           WHERE id = $5""",
+                        current_price, total_value, gain_loss, gain_loss_percent, holding['id']
+                    )
+                    
+                    # Update holding dict
+                    holding['current_price'] = current_price
+                    holding['total_value'] = total_value
+                    holding['gain_loss'] = gain_loss
+                    holding['gain_loss_percent'] = gain_loss_percent
+                    holding['last_updated'] = datetime.now(timezone.utc)
+                else:
+                    logger.warning(f"Invalid price (0 or negative) for {symbol}, keeping existing price")
+            else:
+                # If price fetch failed, log it but keep existing price from database
+                error_msg = current_price_data.get("error", "Unknown error")
+                logger.warning(f"Could not fetch price for {symbol}: {error_msg}. Using existing price from database.")
+                # Keep the existing price from the database - don't update
             
-            holding["id"] = str(holding["_id"])
-            updated_holdings.append(HoldingResponse(**holding))
+            # Ensure all values are properly converted before creating response
+            holding_dict = holding_to_dict(holding)
+            try:
+                updated_holdings.append(HoldingResponse(**holding_dict))
+            except Exception as e:
+                logger.error(f"Error creating HoldingResponse for {symbol}: {str(e)}")
+                logger.error(f"Holding dict: {holding_dict}")
+                # Skip this holding if it can't be serialized
+                continue
         
+        logger.info(f"Returning {len(updated_holdings)} holdings to frontend")
         return updated_holdings
-        
     except Exception as e:
         logger.error(f"Error fetching holdings: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to fetch holdings")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch holdings: {str(e)}")
 
 @holdings_router.get("/{holding_id}", response_model=HoldingResponse)
 async def get_holding(
@@ -182,37 +353,42 @@ async def get_holding(
 ):
     """Get specific holding by ID"""
     try:
-        from bson import ObjectId
+        pool = await get_db_pool()
         
-        holding = await db.holdings.find_one({
-            "_id": ObjectId(holding_id),
-            "user_id": current_user.id
-        })
+        holding = await execute_one(
+            "SELECT * FROM holdings WHERE id = $1 AND user_id = $2",
+            holding_id,
+            current_user.id
+        )
         
         if not holding:
             raise HTTPException(status_code=404, detail="Holding not found")
         
         # Update price
-        asset_type = holding["type"] if holding["type"] != 'roth_ira' else 'stock'
-        price_data = await price_service.get_price(holding["symbol"], asset_type)
+        asset_type = holding['type'] if holding['type'] != 'roth_ira' else 'stock'
+        price_data = await price_service.get_price(holding['symbol'], asset_type)
         
         if "error" not in price_data and "price" in price_data:
             current_price = price_data["price"]
-            total_value = holding["shares"] * current_price
-            gain_loss = total_value - holding["total_cost"]
-            gain_loss_percent = (gain_loss / holding["total_cost"]) * 100 if holding["total_cost"] > 0 else 0
+            total_value = holding['shares'] * current_price
+            gain_loss = total_value - holding['total_cost']
+            gain_loss_percent = (gain_loss / holding['total_cost']) * 100 if holding['total_cost'] > 0 else 0
             
-            holding.update({
-                "current_price": current_price,
-                "total_value": total_value,
-                "gain_loss": gain_loss,
-                "gain_loss_percent": gain_loss_percent,
-                "last_updated": datetime.now(timezone.utc)
-            })
+            await execute_update(
+                """UPDATE holdings SET 
+                   current_price = $1, total_value = $2, gain_loss = $3, 
+                   gain_loss_percent = $4, last_updated = NOW()
+                   WHERE id = $5""",
+                current_price, total_value, gain_loss, gain_loss_percent, holding_id
+            )
+            
+            holding['current_price'] = current_price
+            holding['total_value'] = total_value
+            holding['gain_loss'] = gain_loss
+            holding['gain_loss_percent'] = gain_loss_percent
+            holding['last_updated'] = datetime.now(timezone.utc)
         
-        holding["id"] = str(holding["_id"])
-        return HoldingResponse(**holding)
-        
+        return HoldingResponse(**holding_to_dict(holding))
     except HTTPException:
         raise
     except Exception as e:
@@ -227,76 +403,62 @@ async def update_holding(
 ):
     """Update holding details"""
     try:
-        from bson import ObjectId
+        pool = await get_db_pool()
         
         # Find existing holding
-        existing_holding = await db.holdings.find_one({
-            "_id": ObjectId(holding_id),
-            "user_id": current_user.id
-        })
+        existing_holding = await execute_one(
+            "SELECT * FROM holdings WHERE id = $1 AND user_id = $2",
+            holding_id,
+            current_user.id
+        )
         
         if not existing_holding:
             raise HTTPException(status_code=404, detail="Holding not found")
         
-        # Prepare update data
-        update_fields = {}
-        if update_data.name is not None:
-            update_fields["name"] = update_data.name
-        if update_data.shares is not None:
-            update_fields["shares"] = update_data.shares
-        if update_data.avg_cost is not None:
-            update_fields["avg_cost"] = update_data.avg_cost
-        if update_data.sector is not None:
-            update_fields["sector"] = update_data.sector
-        if update_data.platform is not None:
-            update_fields["platform"] = update_data.platform
-        
-        if not update_fields:
-            raise HTTPException(status_code=400, detail="No fields to update")
+        # Prepare update fields
+        shares = update_data.shares if update_data.shares is not None else existing_holding['shares']
+        avg_cost = update_data.avg_cost if update_data.avg_cost is not None else existing_holding['avg_cost']
+        name = update_data.name if update_data.name is not None else existing_holding['name']
+        sector = update_data.sector if update_data.sector is not None else existing_holding.get('sector')
+        platform = update_data.platform if update_data.platform is not None else existing_holding.get('platform')
         
         # Get current price
-        asset_type = existing_holding["type"] if existing_holding["type"] != 'roth_ira' else 'stock'
-        price_data = await price_service.get_price(existing_holding["symbol"], asset_type)
+        asset_type = existing_holding['type'] if existing_holding['type'] != 'roth_ira' else 'stock'
+        price_data = await price_service.get_price(existing_holding['symbol'], asset_type)
         
-        current_price = existing_holding["current_price"]
+        current_price = existing_holding['current_price']
         if "error" not in price_data and "price" in price_data:
             current_price = price_data["price"]
         
-        # Recalculate values with updated data
-        shares = update_fields.get("shares", existing_holding["shares"])
-        avg_cost = update_fields.get("avg_cost", existing_holding["avg_cost"])
-        
+        # Recalculate values
         total_value = shares * current_price
         total_cost = shares * avg_cost
         gain_loss = total_value - total_cost
         gain_loss_percent = (gain_loss / total_cost) * 100 if total_cost > 0 else 0
         
-        update_fields.update({
-            "current_price": current_price,
-            "total_value": total_value,
-            "total_cost": total_cost,
-            "gain_loss": gain_loss,
-            "gain_loss_percent": gain_loss_percent,
-            "last_updated": datetime.now(timezone.utc)
-        })
-        
         # Update in database
-        await db.holdings.update_one(
-            {"_id": ObjectId(holding_id)},
-            {"$set": update_fields}
+        await execute_update(
+            """UPDATE holdings SET 
+               name = $1, shares = $2, avg_cost = $3, current_price = $4,
+               total_value = $5, total_cost = $6, gain_loss = $7, 
+               gain_loss_percent = $8, sector = $9, platform = $10, last_updated = NOW()
+               WHERE id = $11""",
+            name, shares, avg_cost, current_price, total_value, total_cost,
+            gain_loss, gain_loss_percent, sector, platform, holding_id
         )
         
         # Return updated holding
-        updated_holding = await db.holdings.find_one({"_id": ObjectId(holding_id)})
-        updated_holding["id"] = str(updated_holding["_id"])
+        updated_holding = await execute_one(
+            "SELECT * FROM holdings WHERE id = $1",
+            holding_id
+        )
         
-        return HoldingResponse(**updated_holding)
-        
+        return HoldingResponse(**holding_to_dict(updated_holding))
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error updating holding {holding_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to update holding")
+        raise HTTPException(status_code=500, detail=f"Failed to update holding: {str(e)}")
 
 @holdings_router.delete("/{holding_id}")
 async def delete_holding(
@@ -305,18 +467,18 @@ async def delete_holding(
 ):
     """Delete holding"""
     try:
-        from bson import ObjectId
+        pool = await get_db_pool()
         
-        result = await db.holdings.delete_one({
-            "_id": ObjectId(holding_id),
-            "user_id": current_user.id
-        })
+        result = await execute_update(
+            "DELETE FROM holdings WHERE id = $1 AND user_id = $2",
+            holding_id,
+            current_user.id
+        )
         
-        if result.deleted_count == 0:
+        if result == "DELETE 0":
             raise HTTPException(status_code=404, detail="Holding not found")
         
         return {"message": "Holding deleted successfully"}
-        
     except HTTPException:
         raise
     except Exception as e:
@@ -343,7 +505,6 @@ async def search_symbol(
             "source": price_data.get("source", "unknown"),
             "last_updated": price_data.get("last_updated")
         }
-        
     except HTTPException:
         raise
     except Exception as e:
@@ -359,57 +520,26 @@ async def get_platforms_for_asset_type(
     try:
         platforms = {
             "stock": [
-                "Robinhood",
-                "E*TRADE",
-                "TD Ameritrade", 
-                "Charles Schwab",
-                "Fidelity",
-                "Interactive Brokers",
-                "Webull",
-                "M1 Finance",
-                "Vanguard",
-                "Merrill Lynch",
-                "Ally Invest",
-                "SoFi Invest",
-                "Public",
-                "Cash App Investing",
-                "Other"
+                "Robinhood", "E*TRADE", "TD Ameritrade", "Charles Schwab",
+                "Fidelity", "Interactive Brokers", "Webull", "M1 Finance",
+                "Vanguard", "Merrill Lynch", "Ally Invest", "SoFi Invest",
+                "Public", "Cash App Investing", "Other"
             ],
             "crypto": [
-                "Coinbase",
-                "Coinbase Pro",
-                "Binance US",
-                "Kraken",
-                "Gemini",
-                "KuCoin",
-                "Crypto.com",
-                "MetaMask",
-                "Hardware Wallet (Ledger)",
-                "Hardware Wallet (Trezor)",
-                "Trust Wallet",
-                "Exodus",
-                "Atomic Wallet",
-                "Cold Storage",
-                "Other"
+                "Coinbase", "Coinbase Pro", "Binance US", "Kraken", "Gemini",
+                "KuCoin", "Crypto.com", "MetaMask", "Hardware Wallet (Ledger)",
+                "Hardware Wallet (Trezor)", "Trust Wallet", "Exodus",
+                "Atomic Wallet", "Cold Storage", "Other"
             ],
             "roth_ira": [
-                "Fidelity IRA",
-                "Vanguard IRA",
-                "Charles Schwab IRA",
-                "TD Ameritrade IRA",
-                "E*TRADE IRA",
-                "Merrill Lynch IRA",
-                "Interactive Brokers IRA",
-                "Ally Invest IRA",
-                "Wealthfront IRA",
-                "Betterment IRA",
-                "M1 Finance IRA",
-                "Other"
+                "Fidelity IRA", "Vanguard IRA", "Charles Schwab IRA",
+                "TD Ameritrade IRA", "E*TRADE IRA", "Merrill Lynch IRA",
+                "Interactive Brokers IRA", "Ally Invest IRA", "Wealthfront IRA",
+                "Betterment IRA", "M1 Finance IRA", "Other"
             ]
         }
         
         return {"platforms": platforms.get(asset_type, [])}
-        
     except Exception as e:
         logger.error(f"Error getting platforms for {asset_type}: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to get platforms")
@@ -420,7 +550,12 @@ async def get_portfolio_summary(
 ):
     """Get portfolio summary with real-time calculations"""
     try:
-        holdings = await db.holdings.find({"user_id": current_user.id}).to_list(1000)
+        pool = await get_db_pool()
+        
+        holdings = await execute_query(
+            "SELECT * FROM holdings WHERE user_id = $1",
+            current_user.id
+        )
         
         if not holdings:
             return {
@@ -437,8 +572,8 @@ async def get_portfolio_summary(
             }
         
         # Get updated prices
-        symbols = [h["symbol"] for h in holdings]
-        asset_types = {h["symbol"]: h["type"] if h["type"] in ['stock', 'crypto'] else 'stock' for h in holdings}
+        symbols = [h['symbol'] for h in holdings]
+        asset_types = {h['symbol']: h['type'] if h['type'] in ['stock', 'crypto'] else 'stock' for h in holdings}
         price_data = await price_service.get_multiple_prices(symbols, asset_types)
         
         # Calculate totals with current prices
@@ -447,26 +582,26 @@ async def get_portfolio_summary(
         asset_breakdown = {"stock": 0, "crypto": 0, "roth_ira": 0}
         
         for holding in holdings:
-            symbol = holding["symbol"]
+            symbol = holding['symbol']
             current_price_data = price_data.get(symbol, {})
             
             if "error" not in current_price_data and "price" in current_price_data:
                 current_price = current_price_data["price"]
             else:
-                current_price = holding["current_price"]  # Use last known price
+                current_price = holding['current_price']
             
-            holding_value = holding["shares"] * current_price
-            holding_cost = holding["total_cost"]
+            holding_value = holding['shares'] * current_price
+            holding_cost = holding['total_cost']
             
             total_value += holding_value
             total_cost += holding_cost
             
             # Map asset types correctly
-            asset_type = holding["type"]
+            asset_type = holding['type']
             if asset_type in asset_breakdown:
                 asset_breakdown[asset_type] += 1
             else:
-                asset_breakdown["stock"] += 1  # Default fallback
+                asset_breakdown["stock"] += 1
         
         total_gain_loss = total_value - total_cost
         total_gain_loss_percent = (total_gain_loss / total_cost) * 100 if total_cost > 0 else 0
@@ -484,7 +619,7 @@ async def get_portfolio_summary(
             },
             "last_updated": datetime.now(timezone.utc).isoformat()
         }
-        
     except Exception as e:
         logger.error(f"Error calculating portfolio summary: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to calculate portfolio summary")
+

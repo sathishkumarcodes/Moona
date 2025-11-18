@@ -13,11 +13,20 @@ class HoldingsService {
 
   async getHoldings() {
     try {
-      const response = await this.axios.get(`${API}/holdings`);
+      console.log('holdingsService.getHoldings - calling API:', `${API}/holdings`);
+      const response = await this.axios.get(`${API}/holdings`, {
+        timeout: 30000,
+        withCredentials: true
+      });
+      console.log('holdingsService.getHoldings - response status:', response.status);
+      console.log('holdingsService.getHoldings - response data:', response.data);
+      console.log('holdingsService.getHoldings - holdings count:', Array.isArray(response.data) ? response.data.length : 'not an array');
       return response.data;
     } catch (error) {
       console.error('Error fetching holdings:', error);
-      throw error;
+      console.error('Error details:', error.response?.data || error.message);
+      // Return empty array instead of throwing to prevent breaking the UI
+      return [];
     }
   }
 

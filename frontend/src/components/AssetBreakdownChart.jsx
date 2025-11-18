@@ -7,15 +7,59 @@ const AssetBreakdownChart = ({ data, title = "Asset Type Performance" }) => {
       currency: 'USD',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
-    }).format(amount);
+    }).format(amount || 0);
   };
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric'
-    });
+    try {
+      return new Date(dateString).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric'
+      });
+    } catch {
+      return dateString;
+    }
   };
+
+  // Handle both old format (flat data) and new format (array with assetType and data)
+  let processedData = [];
+  if (data && data.length > 0) {
+    if (data[0].assetType && data[0].data) {
+      // New format: [{assetType: "stock", data: [{date, value}]}, ...]
+      const assetTypes = {};
+      data.forEach(item => {
+        if (item.data && Array.isArray(item.data)) {
+          item.data.forEach(point => {
+            if (!assetTypes[point.date]) {
+              assetTypes[point.date] = {};
+            }
+            assetTypes[point.date][item.assetType] = point.value || 0;
+          });
+        }
+      });
+      
+      // Convert to array format
+      processedData = Object.keys(assetTypes).sort().map(date => ({
+        date,
+        stocks: assetTypes[date].stock || 0,
+        crypto: assetTypes[date].crypto || 0,
+        roth_ira: assetTypes[date].roth_ira || 0
+      }));
+    } else {
+      // Old format: [{date, stocks, crypto, roth_ira}, ...]
+      processedData = data;
+    }
+  }
+
+  if (!processedData || processedData.length === 0) {
+    return (
+      <div className="h-64 flex items-center justify-center text-gray-500">
+        <div className="text-center">
+          <p className="text-sm">No performance data available</p>
+        </div>
+      </div>
+    );
+  }
 
   // Chart dimensions
   const width = 600;
@@ -25,14 +69,21 @@ const AssetBreakdownChart = ({ data, title = "Asset Type Performance" }) => {
   const chartHeight = height - margin.top - margin.bottom;
 
   // Calculate min and max values for scaling
-  const allValues = data.flatMap(d => [d.stocks, d.crypto, d.roth_ira]);
-  const minValue = Math.min(...allValues);
-  const maxValue = Math.max(...allValues);
+  const allValues = processedData.flatMap(d => [
+    d.stocks || 0, 
+    d.crypto || 0, 
+    d.roth_ira || 0
+  ]);
+  const minValue = Math.min(...allValues, 0);
+  const maxValue = Math.max(...allValues, 1);
   const valueRange = maxValue - minValue;
-  const padding = valueRange * 0.1;
+  const padding = valueRange * 0.1 || 1;
 
   // Scale functions
-  const xScale = (index) => (index / (data.length - 1)) * chartWidth;
+  const xScale = (index) => {
+    if (processedData.length <= 1) return 0;
+    return (index / (processedData.length - 1)) * chartWidth;
+  };
   const yScale = (value) => chartHeight - ((value - minValue + padding) / (valueRange + 2 * padding)) * chartHeight;
 
   // Generate path data
@@ -44,9 +95,9 @@ const AssetBreakdownChart = ({ data, title = "Asset Type Performance" }) => {
     }).join(' ');
   };
 
-  const stocksPath = generatePath(data.map(d => d.stocks));
-  const cryptoPath = generatePath(data.map(d => d.crypto));
-  const rothIraPath = generatePath(data.map(d => d.roth_ira));
+  const stocksPath = generatePath(processedData.map(d => d.stocks || 0));
+  const cryptoPath = generatePath(processedData.map(d => d.crypto || 0));
+  const rothIraPath = generatePath(processedData.map(d => d.roth_ira || 0));
 
   // Y-axis ticks
   const yTicks = [];
@@ -60,9 +111,9 @@ const AssetBreakdownChart = ({ data, title = "Asset Type Performance" }) => {
   }
 
   const assetTypes = [
-    { name: 'Stocks', path: stocksPath, color: '#059669', values: data.map(d => d.stocks) },
-    { name: 'Crypto', path: cryptoPath, color: '#dc2626', values: data.map(d => d.crypto) },
-    { name: 'Roth IRA', path: rothIraPath, color: '#7c3aed', values: data.map(d => d.roth_ira) }
+    { name: 'Stocks', path: stocksPath, color: '#059669', values: processedData.map(d => d.stocks || 0) },
+    { name: 'Crypto', path: cryptoPath, color: '#dc2626', values: processedData.map(d => d.crypto || 0) },
+    { name: 'Roth IRA', path: rothIraPath, color: '#7c3aed', values: processedData.map(d => d.roth_ira || 0) }
   ];
 
   return (
@@ -100,8 +151,8 @@ const AssetBreakdownChart = ({ data, title = "Asset Type Performance" }) => {
             ))}
 
             {/* X-axis labels */}
-            {data.map((item, index) => {
-              if (index % Math.ceil(data.length / 4) === 0 || index === data.length - 1) {
+            {processedData.map((item, index) => {
+              if (index % Math.ceil(processedData.length / 4) === 0 || index === processedData.length - 1) {
                 return (
                   <text
                     key={index}

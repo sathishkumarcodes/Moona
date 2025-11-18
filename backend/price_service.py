@@ -68,61 +68,122 @@ class PriceService:
                 return cached_data
             
             # Use Alpha Vantage if API key is available
-            if self.alpha_vantage_key:
-                result = await self._get_alpha_vantage_price(symbol)
-            else:
-                # Fallback to Yahoo Finance API (unofficial but free)
-                result = await self._get_yahoo_finance_price(symbol)
+            if self.alpha_vantage_key and self.alpha_vantage_key != "your_key_here":
+                try:
+                    result = await self._get_alpha_vantage_price(symbol)
+                    # Cache the result
+                    self._cache_price(symbol, result)
+                    return result
+                except Exception as e:
+                    logger.warning(f"Alpha Vantage failed for {symbol}, trying Yahoo Finance: {str(e)}")
             
-            # Cache the result
-            self._cache_price(symbol, result)
-            return result
+            # Fallback to Yahoo Finance API (unofficial but free)
+            try:
+                result = await self._get_yahoo_finance_price(symbol)
+                # Cache the result
+                self._cache_price(symbol, result)
+                return result
+            except Exception as e:
+                logger.error(f"Yahoo Finance failed for {symbol}: {str(e)}")
+                # Don't use mock data - raise error so caller can handle it
+                raise Exception(f"Could not fetch price for {symbol} from any source")
             
         except Exception as e:
             logger.error(f"Error fetching stock price for {symbol}: {str(e)}")
-            # Return mock data if everything fails to keep UI responsive
+            # Return error instead of mock data
             return {
+                "error": f"Could not fetch price for {symbol}",
                 "symbol": symbol,
-                "current_price": 150.0,  # Mock price
-                "currency": "USD",
-                "name": get_company_name(symbol) or symbol,
-                "sector": get_sector(symbol) or "Technology",
-                "mock_fallback": True
+                "message": str(e)
             }
     
     async def _get_yahoo_finance_price(self, symbol: str) -> Dict:
         """Get stock price from Yahoo Finance (free, no API key required)"""
-        try:
-            async with httpx.AsyncClient() as client:
-                url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
-                response = await client.get(url, timeout=10)
-                response.raise_for_status()
-                
-                data = response.json()
-                result = data['chart']['result'][0]
-                meta = result['meta']
-                
-                current_price = meta['regularMarketPrice']
-                prev_close = meta['previousClose']
-                change = current_price - prev_close
-                change_percent = (change / prev_close) * 100
-                
-                return {
-                    "symbol": symbol,
-                    "name": get_company_name(symbol),
-                    "sector": get_sector(symbol),
-                    "price": current_price,
-                    "change": change,
-                    "change_percent": change_percent,
-                    "currency": meta.get('currency', 'USD'),
-                    "last_updated": datetime.now().isoformat(),
-                    "source": "yahoo_finance"
-                }
-                
-        except Exception as e:
-            logger.error(f"Yahoo Finance API error for {symbol}: {str(e)}")
-            # Fallback to mock data for demonstration
-            return self._get_mock_price(symbol)
+        # Try multiple Yahoo Finance endpoints with retries
+        endpoints = [
+            f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}",
+            f"https://query2.finance.yahoo.com/v8/finance/chart/{symbol}",
+        ]
+        
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Accept': 'application/json',
+            'Accept-Language': 'en-US,en;q=0.9',
+        }
+        
+        for attempt in range(2):  # Try twice with different endpoints
+            for endpoint in endpoints:
+                try:
+                    async with httpx.AsyncClient() as client:
+                        # Add delay between requests to avoid rate limiting
+                        if attempt > 0:
+                            await asyncio.sleep(1)
+                        
+                        response = await client.get(
+                            endpoint, 
+                            headers=headers,
+                            timeout=15,
+                            follow_redirects=True
+                        )
+                        
+                        # Handle rate limiting with retry
+                        if response.status_code == 429:
+                            logger.warning(f"Rate limited for {symbol}, waiting before retry...")
+                            await asyncio.sleep(2)
+                            continue
+                        
+                        response.raise_for_status()
+                        
+                        data = response.json()
+                        
+                        # Check if we got valid data
+                        if 'chart' not in data or 'result' not in data['chart'] or len(data['chart']['result']) == 0:
+                            logger.warning(f"Invalid response structure for {symbol}")
+                            continue
+                        
+                        result = data['chart']['result'][0]
+                        meta = result.get('meta', {})
+                        
+                        # Get current price (try multiple fields)
+                        current_price = (
+                            meta.get('regularMarketPrice') or 
+                            meta.get('currentPrice') or 
+                            meta.get('previousClose')
+                        )
+                        
+                        if not current_price:
+                            logger.warning(f"No price found in response for {symbol}")
+                            continue
+                        
+                        prev_close = meta.get('previousClose', current_price)
+                        change = current_price - prev_close
+                        change_percent = (change / prev_close) * 100 if prev_close > 0 else 0
+                        
+                        return {
+                            "symbol": symbol,
+                            "name": get_company_name(symbol),
+                            "sector": get_sector(symbol),
+                            "price": float(current_price),
+                            "change": float(change),
+                            "change_percent": float(change_percent),
+                            "currency": meta.get('currency', 'USD'),
+                            "last_updated": datetime.now().isoformat(),
+                            "source": "yahoo_finance"
+                        }
+                        
+                except httpx.HTTPStatusError as e:
+                    if e.response.status_code == 429:
+                        logger.warning(f"Rate limited for {symbol} on attempt {attempt + 1}")
+                        await asyncio.sleep(3)  # Wait longer for rate limit
+                        continue
+                    logger.error(f"HTTP error for {symbol}: {e.response.status_code}")
+                except Exception as e:
+                    logger.error(f"Yahoo Finance API error for {symbol} on {endpoint}: {str(e)}")
+                    continue
+        
+        # If all attempts failed, raise an error instead of using mock data
+        logger.error(f"All Yahoo Finance attempts failed for {symbol}")
+        raise Exception(f"Could not fetch price for {symbol} from Yahoo Finance")
     
     def _get_mock_price(self, symbol: str) -> Dict:
         """Fallback mock prices for demonstration when APIs are rate limited"""
