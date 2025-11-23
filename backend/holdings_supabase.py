@@ -2,16 +2,18 @@
 Holdings management using Supabase PostgreSQL
 """
 from fastapi import APIRouter, HTTPException, Depends, Request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 from datetime import datetime, timezone
 from typing import List, Optional
 import os
 import logging
+import asyncio
 from dotenv import load_dotenv
 from pathlib import Path
 from auth_supabase import get_current_user_dependency, UserData
 from price_service import price_service
 from db_supabase import get_db_pool, execute_one, execute_insert, execute_update, execute_query, execute_update
+from asset_type_utils import normalize_asset_type
 
 # Load environment variables
 ROOT_DIR = Path(__file__).parent
@@ -24,11 +26,16 @@ holdings_router = APIRouter(prefix="/holdings", tags=["holdings"])
 class HoldingCreate(BaseModel):
     symbol: str = Field(..., min_length=1, max_length=10)
     name: str = Field(..., min_length=1, max_length=200)
-    type: str = Field(..., pattern="^(stock|crypto|roth_ira)$")
+    type: str = Field(..., min_length=1)  # Accept any string, we'll normalize it
     shares: float = Field(..., gt=0)
     avg_cost: float = Field(..., gt=0)
     sector: Optional[str] = Field(None, max_length=100)
     platform: Optional[str] = Field(None, max_length=100)
+    
+    @validator('type', pre=True, always=True)
+    def normalize_type(cls, v):
+        """Normalize asset type to ensure it's valid"""
+        return normalize_asset_type(v) if v else 'other'
 
 class HoldingUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=200)
@@ -81,18 +88,37 @@ async def create_holding(
 ):
     """Create a new holding with real-time price"""
     try:
+        # Type is already normalized by Pydantic validator
+        normalized_type = holding_data.type
+        logger.info(f"create_holding - Received: type={normalized_type}, symbol={holding_data.symbol}, name={holding_data.name}, shares={holding_data.shares}, avg_cost={holding_data.avg_cost}")
+        
+        # Validate user is authenticated
+        if not current_user or not current_user.id:
+            raise HTTPException(status_code=401, detail="Authentication required")
+        
         pool = await get_db_pool()
         
-        # Get current price for the symbol
-        price_data = await price_service.get_price(
-            holding_data.symbol, 
-            holding_data.type if holding_data.type != 'roth_ira' else 'stock'
-        )
-        
-        if "error" in price_data:
-            raise HTTPException(status_code=400, detail=f"Could not fetch price: {price_data['error']}")
-        
-        current_price = price_data["price"]
+        # Get current price for the symbol (only for stock/crypto)
+        # For cash, hysa, bank, home_equity, other - use avg_cost as current_price
+        if normalized_type in ['stock', 'crypto']:
+            try:
+                price_data = await price_service.get_price(
+                    holding_data.symbol, 
+                    normalized_type
+                )
+                
+                if "error" in price_data:
+                    # For stocks/crypto, if we can't get price, use avg_cost as fallback
+                    logger.warning(f"Could not fetch price for {holding_data.symbol}, using avg_cost as fallback")
+                    current_price = holding_data.avg_cost
+                else:
+                    current_price = price_data.get("price", holding_data.avg_cost)
+            except Exception as price_error:
+                logger.warning(f"Price fetch error for {holding_data.symbol}: {str(price_error)}, using avg_cost")
+                current_price = holding_data.avg_cost
+        else:
+            # For non-tradable assets, current price equals avg_cost
+            current_price = holding_data.avg_cost
         
         # Calculate values
         total_value = holding_data.shares * current_price
@@ -100,34 +126,76 @@ async def create_holding(
         gain_loss = total_value - total_cost
         gain_loss_percent = (gain_loss / total_cost) * 100 if total_cost > 0 else 0
         
-        # Insert holding
-        holding = await execute_insert(
-            """INSERT INTO holdings 
-               (user_id, symbol, name, type, shares, avg_cost, current_price, total_value, 
-                total_cost, gain_loss, gain_loss_percent, sector, platform)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-               RETURNING *""",
-            current_user.id,
-            holding_data.symbol.upper(),
-            holding_data.name,
-            holding_data.type,
-            holding_data.shares,
-            holding_data.avg_cost,
-            current_price,
-            total_value,
-            total_cost,
-            gain_loss,
-            gain_loss_percent,
-            holding_data.sector,
-            holding_data.platform
-        )
+        # Validate all required fields
+        if not holding_data.symbol or not holding_data.name:
+            raise HTTPException(status_code=400, detail="Symbol and name are required")
+        
+        if holding_data.shares <= 0 or holding_data.avg_cost <= 0:
+            raise HTTPException(status_code=400, detail="Shares and average cost must be greater than 0")
+        
+        # Insert holding (type already normalized by validator)
+        try:
+            holding = await execute_insert(
+                """INSERT INTO holdings 
+                   (user_id, symbol, name, type, shares, avg_cost, current_price, total_value, 
+                    total_cost, gain_loss, gain_loss_percent, sector, platform)
+                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+                   RETURNING *""",
+                current_user.id,
+                holding_data.symbol.upper().strip(),
+                holding_data.name.strip(),
+                normalized_type,  # Already normalized by validator
+                float(holding_data.shares),
+                float(holding_data.avg_cost),
+                float(current_price),
+                float(total_value),
+                float(total_cost),
+                float(gain_loss),
+                float(gain_loss_percent),
+                holding_data.sector.strip() if holding_data.sector else None,
+                holding_data.platform.strip() if holding_data.platform else 'Manual'
+            )
+        except Exception as db_error:
+            error_str = str(db_error)
+            logger.error(f"Database error inserting holding: {error_str}")
+            
+            # Check for constraint violation
+            if "check constraint" in error_str.lower() or "holdings_type_check" in error_str.lower():
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Database constraint error: The asset type '{normalized_type}' is not allowed. Please run the SQL migration script (FIX_NOW.sql) in your Supabase SQL Editor. Error: {error_str}"
+                )
+            
+            # Check for other database errors
+            if "violates" in error_str.lower() or "constraint" in error_str.lower():
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Database constraint violation: {error_str}. Please check your database constraints."
+                )
+            
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to insert holding into database: {error_str}"
+            )
         
         return HoldingResponse(**holding_to_dict(holding))
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error creating holding: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to create holding: {str(e)}")
+        error_detail = str(e)
+        logger.error(f"Error creating holding: {error_detail}", exc_info=True)
+        
+        # Check if it's a constraint violation
+        if "check constraint" in error_detail.lower() or "holdings_type_check" in error_detail.lower():
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Database constraint error. The asset type is not allowed in the database. Please run the SQL migration script (FIX_NOW.sql) in your Supabase SQL Editor to update the database constraint. Error: {error_detail}"
+            )
+        
+        # Return more detailed error message
+        if "validation" in error_detail.lower() or "pydantic" in error_detail.lower():
+            raise HTTPException(status_code=400, detail=f"Validation error: {error_detail}")
+        raise HTTPException(status_code=500, detail=f"Failed to create holding: {error_detail}")
 
 @holdings_router.get("", response_model=List[HoldingResponse])
 async def get_holdings(
@@ -137,21 +205,40 @@ async def get_holdings(
     try:
         pool = await get_db_pool()
         
+        # Log user info for debugging
+        logger.info(f"get_holdings - User ID: {current_user.id}, Email: {current_user.email}")
+        
         # Fetch user's holdings
         holdings = await execute_query(
             "SELECT * FROM holdings WHERE user_id = $1 ORDER BY created_at DESC",
             current_user.id
         )
         
+        logger.info(f"get_holdings - Found {len(holdings)} holdings for user {current_user.id} ({current_user.email})")
+        
         if not holdings:
+            logger.info(f"get_holdings - No holdings found for user {current_user.id}")
             return []
         
         # Get symbols and types for batch price update
         symbols = [h['symbol'] for h in holdings]
-        asset_types = {h['symbol']: h['type'] if h['type'] != 'roth_ira' else 'stock' for h in holdings}
+        asset_types = {h['symbol']: h['type'] if h['type'] not in ['roth_ira', 'cash', 'hysa', 'bank', 'home_equity', 'other'] else 'stock' for h in holdings}
         
-        # Fetch current prices
-        price_data = await price_service.get_multiple_prices(symbols, asset_types)
+        # Only fetch prices for tradable assets (stock/crypto)
+        tradable_symbols = [s for s, h in zip(symbols, holdings) if h['type'] in ['stock', 'crypto']]
+        tradable_types = {s: asset_types[s] for s in tradable_symbols}
+        
+        # Fetch current prices with timeout
+        price_data = {}
+        if tradable_symbols:
+            try:
+                price_data = await asyncio.wait_for(
+                    price_service.get_multiple_prices(tradable_symbols, tradable_types),
+                    timeout=3.0  # Fast timeout - use cached/db prices if slow
+                )
+            except (asyncio.TimeoutError, Exception) as e:
+                logger.warning(f"Price fetch timeout/error, using existing prices: {str(e)}")
+                price_data = {}
         
         # Update holdings with current prices
         updated_holdings = []
@@ -335,17 +422,40 @@ async def search_symbol(
     symbol: str,
     current_user: UserData = Depends(get_current_user_dependency)
 ):
-    """Search for symbol and get current price"""
+    """Search for symbol and get current price, company name, and sector"""
     try:
-        # Get price data for symbol
+        # Get price data for symbol (auto-detect type)
         price_data = await price_service.get_price(symbol)
         
         if "error" in price_data:
             raise HTTPException(status_code=404, detail=price_data["error"])
         
+        # Extract name and sector from price_data if available
+        name = price_data.get("name")
+        sector = price_data.get("sector")
+        
+        # Always try to get name from company_data (more reliable)
+        from company_data import get_company_name, get_sector
+        company_name = get_company_name(symbol)
+        
+        # Use company_data name if price_data doesn't have a good name
+        # or if price_data name is just the symbol
+        if not name or name.strip().upper() == symbol.upper() or len(name.strip()) < 3:
+            name = company_name
+        else:
+            # Prefer price_data name if it's more descriptive (not just symbol)
+            name = name.strip()
+        
+        # Always get sector from company_data if not in price_data
+        if not sector or not sector.strip():
+            sector = get_sector(symbol)
+        
         return {
             "symbol": symbol.upper(),
-            "current_price": price_data["price"],
+            "name": name,  # Company/asset name
+            "current_price": price_data.get("price") or price_data.get("current_price"),
+            "price": price_data.get("price") or price_data.get("current_price"),  # Also include as "price" for compatibility
+            "sector": sector,  # Sector information
             "currency": price_data.get("currency", "USD"),
             "source": price_data.get("source", "unknown"),
             "last_updated": price_data.get("last_updated")

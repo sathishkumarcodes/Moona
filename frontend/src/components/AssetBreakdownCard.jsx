@@ -6,15 +6,15 @@ import PortfolioPieChart from './PortfolioPieChart';
 const AssetBreakdownCard = ({ holdings, portfolioAllocation }) => {
   if (!holdings || holdings.length === 0) {
     return (
-      <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-sm rounded-xl">
+      <Card className="bg-white/80 dark:bg-[#112334] backdrop-blur-sm border-0 dark:border-[rgba(255,255,255,0.05)] dark:shadow-[0_4px_12px_rgba(0,0,0,0.2)] shadow-sm rounded-2xl">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold text-gray-800 flex items-center">
-            <PieChartIcon className="w-4 h-4 mr-2 text-gray-600" />
+          <CardTitle className="text-base font-semibold text-gray-800 dark:text-slate-200 flex items-center">
+            <PieChartIcon className="w-4 h-4 mr-2 text-gray-600 dark:text-slate-400" />
             Asset Breakdown
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="h-48 flex items-center justify-center text-gray-500 text-sm">
+        <CardContent className="p-8">
+          <div className="h-48 flex items-center justify-center text-gray-500 dark:text-slate-400 text-sm">
             No holdings yet
           </div>
         </CardContent>
@@ -59,14 +59,14 @@ const AssetBreakdownCard = ({ holdings, portfolioAllocation }) => {
   };
 
   return (
-    <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-sm rounded-xl">
+    <Card className="bg-white/80 dark:bg-[#112334] backdrop-blur-sm border-0 dark:border-[rgba(255,255,255,0.05)] dark:shadow-[0_4px_12px_rgba(0,0,0,0.2)] shadow-sm rounded-2xl">
       <CardHeader className="pb-3">
-        <CardTitle className="text-base font-semibold text-gray-800 flex items-center">
-          <PieChartIcon className="w-4 h-4 mr-2 text-gray-600" />
+        <CardTitle className="text-base font-semibold text-gray-800 dark:text-slate-200 flex items-center">
+          <PieChartIcon className="w-4 h-4 mr-2 text-gray-600 dark:text-slate-400" />
           Asset Breakdown
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-8">
         <div className="space-y-4">
           {/* Compact Pie Chart */}
           <div className="flex justify-center">
@@ -79,16 +79,16 @@ const AssetBreakdownCard = ({ holdings, portfolioAllocation }) => {
 
           {/* Table */}
           <div className="space-y-2">
-            <div className="grid grid-cols-3 gap-2 text-xs font-semibold text-gray-600 border-b border-gray-200 pb-2">
+            <div className="grid grid-cols-3 gap-2 text-xs font-semibold text-gray-600 dark:text-slate-400 border-b border-gray-200 dark:border-[rgba(255,255,255,0.04)] pb-2">
               <div>Asset Class</div>
               <div className="text-right">Allocation</div>
               <div className="text-right">Value</div>
             </div>
             {assetTypes.slice(0, 5).map((item, idx) => (
               <div key={idx} className="grid grid-cols-3 gap-2 text-sm">
-                <div className="font-medium text-gray-700 truncate">{item.type}</div>
-                <div className="text-right text-gray-600">{item.percentage.toFixed(1)}%</div>
-                <div className="text-right text-gray-700 font-medium">{formatCurrency(item.value)}</div>
+                <div className="font-medium text-gray-700 dark:text-slate-300 truncate">{item.type}</div>
+                <div className="text-right text-gray-600 dark:text-slate-400">{item.percentage.toFixed(1)}%</div>
+                <div className="text-right text-gray-700 dark:text-slate-300 font-medium">{formatCurrency(item.value)}</div>
               </div>
             ))}
           </div>

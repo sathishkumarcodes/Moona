@@ -46,11 +46,50 @@ async def get_daily_insight(
         current_metrics = await calculate_portfolio_metrics(current_user.id)
         current_holdings = current_metrics.get("holdings", [])
         
+        # Check if we have holdings
+        if not current_holdings or len(current_holdings) == 0:
+            # Return a default insight for empty portfolio
+            return DailyInsightResponse(
+                date=target_date.strftime("%Y-%m-%d"),
+                headline="Welcome to Moona! Add your first holding to see insights.",
+                details="Once you add holdings to your portfolio, we'll provide daily insights about your portfolio performance, top movers, and concentration risks.",
+                keyDrivers=[],
+                attribution={
+                    "changePct": 0.0,
+                    "changeValue": 0.0,
+                    "topGainers": [],
+                    "topLosers": [],
+                    "sectorBreakdown": [],
+                    "concentration": {
+                        "topHoldingPct": 0.0,
+                        "top3Pct": 0.0,
+                        "topSectorPct": 0.0
+                    }
+                },
+                changePct=0.0,
+                changeValue=0.0
+            )
+        
+        # Transform holdings to match expected format for attribution calculation
+        transformed_holdings = []
+        for h in current_holdings:
+            transformed_holdings.append({
+                'symbol': h.get('symbol', ''),
+                'name': h.get('name', ''),
+                'quantity': h.get('shares', h.get('quantity', 0)),
+                'price': h.get('current_price', 0),
+                'average_cost': h.get('avg_cost', 0),
+                'total_value': h.get('total_value', 0),
+                'total_cost': h.get('total_cost', 0),
+                'type': h.get('type', 'other'),
+                'sector': h.get('sector', 'Other')
+            })
+        
         # For now, we'll use current holdings vs cost basis as "previous"
         # In a production system, you'd store daily snapshots
         # Calculate attribution using current vs cost basis
         attribution = calculate_daily_attribution(
-            current_holdings=current_holdings,
+            current_holdings=transformed_holdings,
             previous_holdings=None,  # Will use cost basis
             previous_total_value=None  # Will calculate from cost basis
         )
@@ -71,8 +110,31 @@ async def get_daily_insight(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error getting daily insight: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to generate insight: {str(e)}")
+        logger.error(f"Error getting daily insight: {str(e)}", exc_info=True)
+        # Return a fallback insight instead of raising error
+        try:
+            return DailyInsightResponse(
+                date=datetime.now().date().strftime("%Y-%m-%d"),
+                headline="Portfolio insight temporarily unavailable",
+                details="We're having trouble generating your insight right now. Please try refreshing in a moment.",
+                keyDrivers=[],
+                attribution={
+                    "changePct": 0.0,
+                    "changeValue": 0.0,
+                    "topGainers": [],
+                    "topLosers": [],
+                    "sectorBreakdown": [],
+                    "concentration": {
+                        "topHoldingPct": 0.0,
+                        "top3Pct": 0.0,
+                        "topSectorPct": 0.0
+                    }
+                },
+                changePct=0.0,
+                changeValue=0.0
+            )
+        except:
+            raise HTTPException(status_code=500, detail=f"Failed to generate insight: {str(e)}")
 
 @insights_router.get("/weekly")
 async def get_weekly_insight(

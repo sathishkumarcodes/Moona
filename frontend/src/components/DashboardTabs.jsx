@@ -13,7 +13,7 @@ const DashboardTabs = ({
 }) => {
   return (
     <Tabs value={selectedTab} onValueChange={onTabChange} className="w-full">
-      <TabsList className="grid w-full grid-cols-5 mb-6 bg-white/70 backdrop-blur-sm border-0 shadow-sm rounded-full p-1 h-12">
+      <TabsList className="grid w-full grid-cols-5 mb-6 bg-white/70 dark:bg-[#112334] backdrop-blur-sm border-0 dark:border-[rgba(255,255,255,0.05)] dark:shadow-[0_4px_12px_rgba(0,0,0,0.2)] shadow-sm rounded-full p-1 h-12">
         <TabsTrigger 
           value="overview" 
           className="data-[state=active]:bg-emerald-500 data-[state=active]:text-white data-[state=active]:shadow-sm rounded-full font-medium transition-all duration-200 text-sm flex items-center justify-center gap-2"

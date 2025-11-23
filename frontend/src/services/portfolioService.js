@@ -8,7 +8,7 @@ const portfolioService = {
     try {
       const response = await axios.get(`${API}/portfolio/summary`, {
         withCredentials: true,
-        timeout: 15000 // Reduced from 30s to 15s
+        timeout: 8000 // Reduced to 8s for faster fail
       });
       return response.data;
     } catch (error) {
@@ -21,7 +21,7 @@ const portfolioService = {
     try {
       const response = await axios.get(`${API}/portfolio/performance`, {
         withCredentials: true,
-        timeout: 15000 // Reduced from 30s to 15s
+        timeout: 10000 // Reduced to 10s
       });
       return response.data;
     } catch (error) {
@@ -34,7 +34,7 @@ const portfolioService = {
     try {
       const response = await axios.get(`${API}/portfolio/allocation`, {
         withCredentials: true,
-        timeout: 15000 // Reduced from 30s to 15s
+        timeout: 10000 // Reduced to 10s
       });
       return response.data;
     } catch (error) {
@@ -49,7 +49,7 @@ const portfolioService = {
       const response = await axios.get(`${API}/portfolio/spy-comparison`, {
         params,
         withCredentials: true,
-        timeout: 15000 // Reduced from 30s to 15s
+        timeout: 12000 // Reduced to 12s
       });
       return response.data;
     } catch (error) {
@@ -128,7 +128,7 @@ const portfolioService = {
     try {
       const response = await axios.get(`${API}/portfolio/top-performers?limit=${limit}`, {
         withCredentials: true,
-        timeout: 15000 // Reduced from 30s to 15s
+        timeout: 8000 // Reduced to 8s
       });
       return response.data;
     } catch (error) {

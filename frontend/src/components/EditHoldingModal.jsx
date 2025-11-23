@@ -30,7 +30,7 @@ const EditHoldingModal = ({ holding, open, onClose, onHoldingUpdated }) => {
   useEffect(() => {
     if (holding && open) {
       const holdingType = holding.type || '';
-      const isCustomType = holdingType && !['stock', 'crypto', 'roth_ira', 'etf', 'bond', '401k', '529', 'child_roth', 'hsa', 'traditional_ira', 'sep_ira'].includes(holdingType.toLowerCase());
+      const isCustomType = holdingType && !['stock', 'crypto', 'roth_ira', 'etf', 'bond', 'cash', 'hysa', 'bank', 'home_equity', '401k', '529', 'child_roth', 'hsa', 'traditional_ira', 'sep_ira', 'other'].includes(holdingType.toLowerCase());
       
       setFormData({
         name: holding.name || '',
@@ -163,7 +163,7 @@ const EditHoldingModal = ({ holding, open, onClose, onHoldingUpdated }) => {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Current Price Display */}
-          <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200">
+          <Card className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border-blue-200 dark:border-[rgba(255,255,255,0.05)] dark:shadow-[0_4px_12px_rgba(0,0,0,0.2)] rounded-2xl">
             <CardContent className="pt-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -236,6 +236,10 @@ const EditHoldingModal = ({ holding, open, onClose, onHoldingUpdated }) => {
                   <SelectContent>
                     <SelectItem value="stock">Stock</SelectItem>
                     <SelectItem value="crypto">Cryptocurrency</SelectItem>
+                    <SelectItem value="cash">Cash</SelectItem>
+                    <SelectItem value="hysa">HYSA</SelectItem>
+                    <SelectItem value="bank">Bank Account</SelectItem>
+                    <SelectItem value="home_equity">Home Equity</SelectItem>
                     <SelectItem value="roth_ira">Roth IRA</SelectItem>
                     <SelectItem value="etf">ETF</SelectItem>
                     <SelectItem value="bond">Bond</SelectItem>
@@ -245,6 +249,7 @@ const EditHoldingModal = ({ holding, open, onClose, onHoldingUpdated }) => {
                     <SelectItem value="hsa">HSA (Health Savings Account)</SelectItem>
                     <SelectItem value="traditional_ira">Traditional IRA</SelectItem>
                     <SelectItem value="sep_ira">SEP IRA</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
                     <SelectItem value="custom">+ Add Custom Type</SelectItem>
                   </SelectContent>
                 </Select>
@@ -304,7 +309,7 @@ const EditHoldingModal = ({ holding, open, onClose, onHoldingUpdated }) => {
 
           {/* Updated Preview */}
           {preview && (
-            <Card className="bg-gray-50 border-gray-200">
+            <Card className="bg-gray-50 dark:bg-[#112334] border-gray-200 dark:border-[rgba(255,255,255,0.05)] dark:shadow-[0_4px_12px_rgba(0,0,0,0.2)] rounded-2xl">
               <CardContent className="pt-4">
                 <h4 className="font-semibold mb-3">Updated Investment Preview</h4>
                 <div className="grid grid-cols-2 gap-4">

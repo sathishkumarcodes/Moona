@@ -7,7 +7,7 @@ const PortfolioPieChart = ({ holdings }) => {
   // Initialize with all available asset types from holdings, or default set
   const getInitialAssetTypes = () => {
     if (!holdings || holdings.length === 0) {
-      return new Set(['stock', 'crypto', 'roth_ira', 'etf', 'bond', 'other']);
+      return new Set(['stock', 'crypto', 'cash', 'hysa', 'bank', 'home_equity', 'roth_ira', 'etf', 'bond', '401k', '529', 'child_roth', 'hsa', 'traditional_ira', 'sep_ira', 'other']);
     }
     const types = new Set();
     holdings.forEach(h => {
@@ -23,7 +23,7 @@ const PortfolioPieChart = ({ holdings }) => {
       }
     });
     // If no types found, use defaults
-    return types.size > 0 ? types : new Set(['stock', 'crypto', 'roth_ira', 'etf', 'bond', 'other']);
+    return types.size > 0 ? types : new Set(['stock', 'crypto', 'cash', 'hysa', 'bank', 'home_equity', 'roth_ira', 'etf', 'bond', '401k', '529', 'child_roth', 'hsa', 'traditional_ira', 'sep_ira', 'other']);
   };
   
   const [selectedAssetTypes, setSelectedAssetTypes] = useState(() => getInitialAssetTypes());
@@ -46,6 +46,11 @@ const PortfolioPieChart = ({ holdings }) => {
       'stocks': '#059669',
       'crypto': '#dc2626',
       'cryptocurrency': '#dc2626',
+      'cash': '#FACC15',
+      'hysa': '#FACC15',
+      'bank': '#FACC15',
+      'home_equity': '#A78BFA',
+      'home equity': '#A78BFA',
       'roth_ira': '#7c3aed',
       'roth ira': '#7c3aed',
       'etf': '#3b82f6',
@@ -400,6 +405,11 @@ const PortfolioPieChart = ({ holdings }) => {
       'stocks': 'Stocks',
       'crypto': 'Crypto',
       'cryptocurrency': 'Crypto',
+      'cash': 'Cash',
+      'hysa': 'HYSA',
+      'bank': 'Bank Account',
+      'home_equity': 'Home Equity',
+      'home equity': 'Home Equity',
       'roth_ira': 'Roth IRA',
       'roth ira': 'Roth IRA',
       'etf': 'ETF',

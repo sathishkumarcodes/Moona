@@ -151,12 +151,27 @@ def parse_fidelity_csv(csv_content: str) -> tuple:
                     errors.append(f"Row {row_num}: Invalid numeric values for {symbol or 'unknown'}: {str(e)}")
                     continue
                 
-                # Determine asset type
-                asset_type = 'stock'
-                if 'ETF' in name.upper() or symbol.endswith('ETF'):
+                # Determine asset type using normalization utility
+                from asset_type_utils import normalize_asset_type
+                
+                # Try to determine from name/symbol
+                asset_type = 'stock'  # Default
+                name_upper = name.upper() if name else ''
+                if 'ETF' in name_upper or symbol.endswith('ETF'):
                     asset_type = 'etf'
-                elif 'IRA' in name.upper() or 'ROTH' in name.upper() or '401K' in name.upper():
+                elif 'IRA' in name_upper or 'ROTH' in name_upper:
                     asset_type = 'roth_ira'
+                elif '401K' in name_upper or '401(K)' in name_upper:
+                    asset_type = '401k'
+                elif '529' in name_upper:
+                    asset_type = '529'
+                elif 'HSA' in name_upper:
+                    asset_type = 'hsa'
+                elif 'BOND' in name_upper:
+                    asset_type = 'bond'
+                
+                # Normalize to ensure it's valid
+                asset_type = normalize_asset_type(asset_type)
                 
                 # Extract sector if available
                 sector = safe_get(row, ['Sector', 'sector'], '') or None
@@ -295,6 +310,9 @@ async def import_fidelity_csv(
                     updated_count += 1
                 else:
                     # Insert new holding
+                    # Normalize asset type before insert
+                    normalized_type = normalize_asset_type(holding_data['type'])
+                    
                     await execute_insert(
                         """INSERT INTO holdings 
                            (user_id, symbol, name, type, shares, avg_cost, current_price, total_value, 
@@ -304,7 +322,7 @@ async def import_fidelity_csv(
                         current_user.id,
                         holding_data['symbol'],
                         holding_data['name'],
-                        holding_data['type'],
+                        normalized_type,  # Use normalized type
                         holding_data['shares'],
                         holding_data['avg_cost'],
                         current_price,

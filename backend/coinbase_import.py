@@ -256,7 +256,7 @@ async def connect_coinbase(
                         current_user.id,
                         symbol,
                         name,
-                        "crypto",
+                        "crypto",  # Coinbase only imports crypto
                         balance,
                         avg_cost,
                         current_price,

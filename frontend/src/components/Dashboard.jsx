@@ -1,38 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Button } from './ui/button';
-import { Badge } from './ui/badge';
-import { TrendingUp, TrendingDown, DollarSign, PieChart as PieChartIcon, BarChart3, Activity, Target, Wallet, Plus, RefreshCw, Download, Layers } from 'lucide-react';
-// All data now comes from backend - no mock imports needed
+import { PieChart as PieChartIcon, BarChart3, RefreshCw, Download } from 'lucide-react';
 import InvestmentList from './InvestmentList';
-import SPYComparison from './SPYComparison';
 import PerformanceChart from './PerformanceChart';
-import PieChart from './PieChart';
-import ContributionChart from './ContributionChart';
-import AssetBreakdownChart from './AssetBreakdownChart';
 import AssetClassBarChart from './AssetClassBarChart';
 import PortfolioPieChart from './PortfolioPieChart';
 import AddHoldingModal from './AddHoldingModal';
 import EditHoldingModal from './EditHoldingModal';
 import ImportHoldingsModal from './ImportHoldingsModal';
-import MoonaLogo from './MoonaLogo';
-import AnimatedMoon from './AnimatedMoon';
-import PortfolioSummaryRow from './PortfolioSummaryRow';
-import KPICard from './KPICard';
 import AssetClassBreakdown from './AssetClassBreakdown';
 import OnboardingFlow from './OnboardingFlow';
 import BenchmarkComparison from './BenchmarkComparison';
 import FutureProjections from './FutureProjections';
 import SPYComparisonTab from './SPYComparisonTab';
-import MilestoneTracker from './MilestoneTracker';
-import QuickInsights from './QuickInsights';
-import EngagementStats from './EngagementStats';
 import DailyInsightCard from './DailyInsightCard';
 import DashboardLayout from './DashboardLayout';
 import PortfolioSummaryCard from './PortfolioSummaryCard';
 import QuickInsightsRow from './QuickInsightsRow';
-import AssetBreakdownCard from './AssetBreakdownCard';
 import TopPerformersCard from './TopPerformersCard';
 import DashboardTabs from './DashboardTabs';
 import holdingsService from '../services/holdingsService';
@@ -79,10 +64,21 @@ const Dashboard = () => {
   const [lastUpdated, setLastUpdated] = useState(new Date());
   const [selectedAssetTypesForSPY, setSelectedAssetTypesForSPY] = useState(new Set());
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [dailyInsight, setDailyInsight] = useState(null);
   const { toast } = useToast();
 
+  // Define loadSPYComparison before it's used
+  const loadSPYComparison = React.useCallback(async () => {
+    try {
+      const result = await portfolioService.getSPYComparison(Array.from(selectedAssetTypesForSPY));
+      setSpyComparison(result);
+    } catch (error) {
+      // Silently fail - don't block UI
+    }
+  }, [selectedAssetTypesForSPY]);
+
   // Check if user should see onboarding
-  React.useEffect(() => {
+  useEffect(() => {
     const isNewUser = localStorage.getItem('moona_is_new_user') === 'true';
     const onboardingCompleted = localStorage.getItem('moona_onboarding_completed') === 'true';
     
@@ -121,7 +117,7 @@ const Dashboard = () => {
   // Load data on component mount
   useEffect(() => {
     loadDashboardData();
-  }, []);
+  }, []); // Empty deps - only run on mount
 
   const loadDashboardData = async () => {
     try {
@@ -142,77 +138,88 @@ const Dashboard = () => {
       
       // Set critical data immediately for faster UI update
       const loadedHoldings = holdingsResult.status === 'fulfilled' ? holdingsResult.value : [];
-      console.log('Dashboard - holdingsResult.status:', holdingsResult.status);
-      console.log('Dashboard - loadedHoldings:', loadedHoldings);
-      console.log('Dashboard - loadedHoldings.length:', Array.isArray(loadedHoldings) ? loadedHoldings.length : 'not an array');
-      console.log('Dashboard - loadedHoldings type:', typeof loadedHoldings);
+      
+      // Debug: Log what we received
+      console.log('🔍 Dashboard - Holdings loaded:', {
+        status: holdingsResult.status,
+        loadedHoldings,
+        isArray: Array.isArray(loadedHoldings),
+        length: loadedHoldings?.length,
+        firstItem: loadedHoldings?.[0],
+        type: typeof loadedHoldings
+      });
       
       // Ensure holdings is always an array
-      const safeHoldings = Array.isArray(loadedHoldings) ? loadedHoldings : [];
-      console.log('Dashboard - safeHoldings.length:', safeHoldings.length);
-      setHoldings(safeHoldings);
-      
-      // Show success message if holdings were loaded
-      if (safeHoldings.length > 0) {
-        console.log(`✅ Successfully loaded ${safeHoldings.length} holdings`);
-      } else if (holdingsResult.status === 'fulfilled') {
-        console.warn('⚠️ API returned empty array - no holdings found');
-      } else {
-        console.error('❌ Failed to load holdings:', holdingsResult.reason);
+      // Handle case where API might return an object with a holdings property
+      let safeHoldings = [];
+      if (Array.isArray(loadedHoldings)) {
+        safeHoldings = loadedHoldings;
+      } else if (loadedHoldings && typeof loadedHoldings === 'object') {
+        // Check if it's an object with a holdings property
+        if (Array.isArray(loadedHoldings.holdings)) {
+          safeHoldings = loadedHoldings.holdings;
+        } else if (Array.isArray(loadedHoldings.data)) {
+          safeHoldings = loadedHoldings.data;
+        }
       }
       
+      console.log('✅ Dashboard - Safe holdings set:', {
+        count: safeHoldings.length,
+        firstHolding: safeHoldings[0],
+        allHoldings: safeHoldings
+      });
+      
+      // Log detailed holdings info
+      if (safeHoldings.length > 0) {
+        console.log('📊 Dashboard - Holdings Details:', {
+          total: safeHoldings.length,
+          byType: safeHoldings.reduce((acc, h) => {
+            const type = h.type || 'unknown';
+            acc[type] = (acc[type] || 0) + 1;
+            return acc;
+          }, {}),
+          symbols: safeHoldings.map(h => h.symbol || 'N/A'),
+          types: safeHoldings.map(h => h.type || 'N/A')
+        });
+      } else {
+        console.warn('⚠️ Dashboard - NO HOLDINGS FOUND! Check API response above.');
+      }
+      
+      setHoldings(safeHoldings);
       setPortfolioSummary(summaryResult.status === 'fulfilled' ? summaryResult.value : null);
       
-      // Load analytics data in parallel (can load in background)
-      const analyticsResults = await Promise.allSettled([
-        portfolioService.getPerformance().catch(err => {
-          console.error('Error loading performance:', err);
-          return null;
-        }),
-        portfolioService.getAllocation().catch(err => {
-          console.error('Error loading allocation:', err);
-          return null;
-        }),
-        portfolioService.getSPYComparison().catch(err => {
-          console.error('Error loading SPY comparison:', err);
-          return null;
-        }),
-        portfolioService.getTopPerformers(5).catch(err => {
-          console.error('Error loading top performers:', err);
-          return [];
-        })
-      ]);
+      // Set loading to false early so UI can render with critical data
+      setIsLoading(false);
       
-      // Update analytics data
-      const [
-        performanceResult,
-        allocationResult,
-        spyResult,
-        topPerformersResult
-      ] = analyticsResults;
+      // Load analytics data in background (non-blocking)
+      // Use setTimeout to defer non-critical data loading
+      setTimeout(async () => {
+        try {
+          const analyticsResults = await Promise.allSettled([
+            portfolioService.getPerformance().catch(() => null),
+            portfolioService.getAllocation().catch(() => null),
+            portfolioService.getTopPerformers(5).catch(() => [])
+          ]);
+          
+          const [performanceResult, allocationResult, topPerformersResult] = analyticsResults;
+          
+          setPortfolioPerformance(performanceResult.status === 'fulfilled' ? performanceResult.value : null);
+          setPortfolioAllocation(allocationResult.status === 'fulfilled' ? allocationResult.value : null);
+          setTopPerformers(topPerformersResult.status === 'fulfilled' ? topPerformersResult.value : []);
+          setLastUpdated(new Date());
+        } catch (error) {
+          // Silently fail for background data - don't show errors
+          console.error('Error loading analytics data:', error);
+        }
+      }, 100); // Defer by 100ms to let UI render first
       
-      setPortfolioPerformance(performanceResult.status === 'fulfilled' ? performanceResult.value : null);
-      setPortfolioAllocation(allocationResult.status === 'fulfilled' ? allocationResult.value : null);
-      setSpyComparison(spyResult.status === 'fulfilled' ? spyResult.value : null);
-      setTopPerformers(topPerformersResult.status === 'fulfilled' ? topPerformersResult.value : []);
-      setLastUpdated(new Date());
-      
-      // Show error toast only if critical requests failed
-      const allResults = [holdingsResult, summaryResult, ...analyticsResults];
-      const failedCount = allResults.filter(r => r.status === 'rejected').length;
-      if (failedCount === allResults.length) {
-        toast({
-          title: "Error Loading Data",
-          description: "Failed to load portfolio data. Please check your connection and try again.",
-          variant: "destructive"
-        });
-      } else if (failedCount > 0) {
-        toast({
-          title: "Partial Data Loaded",
-          description: `Some data failed to load (${failedCount} of ${allResults.length} requests). Please refresh to retry.`,
-          variant: "default"
-        });
+      // Load SPY comparison only when needed (lazy load)
+      if (selectedAssetTypesForSPY.size > 0) {
+        setTimeout(() => {
+          loadSPYComparison();
+        }, 200);
       }
+      
     } catch (error) {
       console.error('Error loading dashboard data:', error);
       toast({
@@ -220,7 +227,6 @@ const Dashboard = () => {
         description: error.response?.data?.detail || error.message || "Failed to load portfolio data. Please try again.",
         variant: "destructive"
       });
-    } finally {
       setIsLoading(false);
     }
   };
@@ -236,21 +242,15 @@ const Dashboard = () => {
     }
   }, [holdings.length]);
 
-  // Reload SPY comparison when asset types change
+  // Reload SPY comparison when asset types change (debounced)
   useEffect(() => {
     if (selectedAssetTypesForSPY.size > 0 && holdings.length > 0) {
-      loadSPYComparison();
+      const timeoutId = setTimeout(() => {
+        loadSPYComparison();
+      }, 300); // Debounce to avoid rapid reloads
+      return () => clearTimeout(timeoutId);
     }
-  }, [selectedAssetTypesForSPY.size, holdings.length]);
-
-  const loadSPYComparison = async () => {
-    try {
-      const result = await portfolioService.getSPYComparison(Array.from(selectedAssetTypesForSPY));
-      setSpyComparison(result);
-    } catch (error) {
-      console.error('Error loading SPY comparison:', error);
-    }
-  };
+  }, [selectedAssetTypesForSPY.size, holdings.length, loadSPYComparison]);
 
   const refreshData = async () => {
     try {
@@ -307,6 +307,11 @@ const Dashboard = () => {
       'stocks': 'Stocks',
       'crypto': 'Crypto',
       'cryptocurrency': 'Crypto',
+      'cash': 'Cash',
+      'hysa': 'HYSA',
+      'bank': 'Bank Account',
+      'home_equity': 'Home Equity',
+      'home equity': 'Home Equity',
       'roth_ira': 'Roth IRA',
       'roth ira': 'Roth IRA',
       'etf': 'ETF',
@@ -405,12 +410,18 @@ const Dashboard = () => {
     }
   };
 
-  // Calculate derived data with safe defaults (for backward compatibility)
-  const allocation = holdingsService.calculateAllocation(holdings || []);
-  const performanceHistory = portfolioPerformance?.portfolioPerformance || holdingsService.generatePerformanceHistory(holdings || [], portfolioSummary || {});
+  // Calculate derived data with safe defaults (memoized for performance)
+  const allocation = useMemo(() => 
+    holdingsService.calculateAllocation(holdings || []), 
+    [holdings]
+  );
+  const performanceHistory = useMemo(() => 
+    portfolioPerformance?.portfolioPerformance || holdingsService.generatePerformanceHistory(holdings || [], portfolioSummary || {}),
+    [portfolioPerformance, holdings, portfolioSummary]
+  );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 relative">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 relative">
       {showOnboarding && (
         <OnboardingFlow 
           isNewUser={true}
@@ -453,7 +464,7 @@ const Dashboard = () => {
 
         {/* 1. Portfolio Summary Bar (Hero KPIs) */}
         {isLoading ? (
-          <PortfolioSummaryCard summary={null} lastUpdated={lastUpdated} />
+          <PortfolioSummaryCard summary={null} lastUpdated={lastUpdated} dailyInsight={null} />
         ) : (
           <PortfolioSummaryCard 
             summary={portfolioSummary ? {
@@ -466,50 +477,67 @@ const Dashboard = () => {
               assetTypeCount: portfolioSummary.assetTypeCount
             } : null}
             lastUpdated={lastUpdated}
+            dailyInsight={dailyInsight}
           />
         )}
 
         {/* 2. Daily Portfolio Insight (Hero Card) */}
-        {!isLoading && <DailyInsightCard />}
+        {!isLoading && <DailyInsightCard onInsightLoaded={setDailyInsight} />}
 
         {/* 3. Quick Insights Row */}
         {!isLoading && (
           <QuickInsightsRow 
             portfolioSummary={portfolioSummary}
             holdings={holdings}
+            onNavigateToTab={setSelectedTab}
+            onFilterHoldings={(filter) => {
+              // Trigger filter event for InvestmentList
+              const filterEvent = new CustomEvent('filterHoldings', { detail: filter });
+              window.dispatchEvent(filterEvent);
+            }}
           />
         )}
 
-        {/* 4. Asset Breakdown + Top Performers (Two-Column Section) */}
-        {!isLoading && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <AssetBreakdownCard 
-              holdings={holdings}
-              portfolioAllocation={portfolioAllocation}
-            />
-            <TopPerformersCard 
-              topPerformers={topPerformers}
-            />
-          </div>
-        )}
-
-        {/* 5. Tabs Section */}
+        {/* 4. Tabs Section */}
         {!isLoading && (
           <DashboardTabs
             selectedTab={selectedTab}
             onTabChange={setSelectedTab}
             overviewContent={
               <div className="space-y-6">
-                {/* Overview tab - additional content can go here */}
+                {/* Asset Class Breakdown */}
+                <AssetClassBreakdown 
+                  holdings={holdings}
+                  dailyChangePct={dailyInsight?.changePct}
+                  dailyChangeValue={dailyInsight?.changeValue}
+                />
+
+                {/* Performance Chart */}
+                <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-0 dark:border-slate-700 shadow-sm rounded-xl">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base font-semibold text-gray-800 dark:text-gray-200 flex items-center">
+                      <BarChart3 className="w-4 h-4 mr-2 text-gray-600 dark:text-gray-400" />
+                      Portfolio Performance
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <PerformanceChart 
+                      data={portfolioPerformance?.portfolioPerformance || []}
+                    />
+                  </CardContent>
+                </Card>
+
+                {/* Top Performers */}
+                <TopPerformersCard topPerformers={topPerformers} />
               </div>
             }
             analyticsContent={
               <div className="space-y-6">
                 {/* Portfolio Percentage Chart */}
-                <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-sm rounded-xl">
+                <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-0 dark:border-slate-700 shadow-sm rounded-xl">
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-base font-semibold text-gray-800 flex items-center">
-                      <PieChartIcon className="w-4 h-4 mr-2 text-gray-600" />
+                    <CardTitle className="text-base font-semibold text-gray-800 dark:text-gray-200 flex items-center">
+                      <PieChartIcon className="w-4 h-4 mr-2 text-gray-600 dark:text-gray-400" />
                       Portfolio Percentage
                     </CardTitle>
                   </CardHeader>
@@ -519,10 +547,10 @@ const Dashboard = () => {
                 </Card>
 
                 {/* Asset Class Performance */}
-                <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-sm rounded-xl">
+                <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-0 dark:border-slate-700 shadow-sm rounded-xl">
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-base font-semibold text-gray-800 flex items-center">
-                      <BarChart3 className="w-4 h-4 mr-2 text-gray-600" />
+                    <CardTitle className="text-base font-semibold text-gray-800 dark:text-gray-200 flex items-center">
+                      <BarChart3 className="w-4 h-4 mr-2 text-gray-600 dark:text-gray-400" />
                       Asset Class Performance
                     </CardTitle>
                   </CardHeader>

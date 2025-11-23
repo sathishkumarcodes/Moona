@@ -7,6 +7,7 @@ import { Label } from './ui/label';
 import { TrendingUp, Shield, BarChart3, Wallet, Mail } from 'lucide-react';
 import MoonaLogo from './MoonaLogo';
 import AnimatedMoon from './AnimatedMoon';
+import ThemeToggle from './ThemeToggle';
 
 const LoginPage = ({ onLogin }) => {
   const [email, setEmail] = React.useState('');
@@ -402,7 +403,7 @@ const LoginPage = ({ onLogin }) => {
 
             {/* Features Grid - Using same styles as landing page */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Card className="bg-white/10 backdrop-blur-md border-white/20 hover:bg-white/15 transition-all rounded-xl shadow-sm">
+              <Card className="bg-white/10 dark:bg-[#112334] backdrop-blur-md border-white/20 dark:border-[rgba(255,255,255,0.05)] hover:bg-white/15 dark:hover:bg-opacity-80 dark:hover:-translate-y-0.5 transition-all rounded-2xl dark:shadow-[0_4px_12px_rgba(0,0,0,0.2)] shadow-sm">
                 <CardContent className="p-4">
                   <div className="flex items-center space-x-3">
                     <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-full flex items-center justify-center flex-shrink-0 shadow-lg">
@@ -416,7 +417,7 @@ const LoginPage = ({ onLogin }) => {
                 </CardContent>
               </Card>
 
-              <Card className="bg-white/10 backdrop-blur-md border-white/20 hover:bg-white/15 transition-all rounded-xl shadow-sm">
+              <Card className="bg-white/10 dark:bg-[#112334] backdrop-blur-md border-white/20 dark:border-[rgba(255,255,255,0.05)] hover:bg-white/15 dark:hover:bg-opacity-80 dark:hover:-translate-y-0.5 transition-all rounded-2xl dark:shadow-[0_4px_12px_rgba(0,0,0,0.2)] shadow-sm">
                 <CardContent className="p-4">
                   <div className="flex items-center space-x-3">
                     <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center flex-shrink-0 shadow-lg">
@@ -430,7 +431,7 @@ const LoginPage = ({ onLogin }) => {
                 </CardContent>
               </Card>
 
-              <Card className="bg-white/10 backdrop-blur-md border-white/20 hover:bg-white/15 transition-all rounded-xl shadow-sm">
+              <Card className="bg-white/10 dark:bg-[#112334] backdrop-blur-md border-white/20 dark:border-[rgba(255,255,255,0.05)] hover:bg-white/15 dark:hover:bg-opacity-80 dark:hover:-translate-y-0.5 transition-all rounded-2xl dark:shadow-[0_4px_12px_rgba(0,0,0,0.2)] shadow-sm">
                 <CardContent className="p-4">
                   <div className="flex items-center space-x-3">
                     <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0 shadow-lg">
@@ -444,7 +445,7 @@ const LoginPage = ({ onLogin }) => {
                 </CardContent>
               </Card>
 
-              <Card className="bg-white/10 backdrop-blur-md border-white/20 hover:bg-white/15 transition-all rounded-xl shadow-sm">
+              <Card className="bg-white/10 dark:bg-[#112334] backdrop-blur-md border-white/20 dark:border-[rgba(255,255,255,0.05)] hover:bg-white/15 dark:hover:bg-opacity-80 dark:hover:-translate-y-0.5 transition-all rounded-2xl dark:shadow-[0_4px_12px_rgba(0,0,0,0.2)] shadow-sm">
                 <CardContent className="p-4">
                   <div className="flex items-center space-x-3">
                     <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-full flex items-center justify-center flex-shrink-0 shadow-lg">
@@ -462,12 +463,15 @@ const LoginPage = ({ onLogin }) => {
 
           {/* Right Side - Auth Card */}
           <div className="flex justify-center lg:justify-end">
-            <Card className="w-full max-w-md bg-slate-800/90 backdrop-blur-md border-slate-700/50 shadow-md rounded-2xl">
+            <Card className="w-full max-w-md bg-slate-800/90 dark:bg-[#112334] backdrop-blur-md border-slate-700/50 dark:border-[rgba(255,255,255,0.05)] dark:shadow-[0_4px_12px_rgba(0,0,0,0.2)] shadow-md rounded-2xl">
               <CardHeader className="text-center pb-4">
-                <CardTitle className="text-2xl text-white font-bold mb-2">
-                  Welcome Back
-                </CardTitle>
-                <p className="text-sm text-gray-400">
+                <div className="flex items-center justify-between mb-2">
+                  <CardTitle className="text-2xl text-white dark:text-gray-100 font-bold">
+                    Welcome Back
+                  </CardTitle>
+                  <ThemeToggle className="text-white hover:bg-white/10" />
+                </div>
+                <p className="text-sm text-gray-400 dark:text-gray-300">
                   Sign in to access your investment dashboard
                 </p>
               </CardHeader>
@@ -534,7 +538,7 @@ const LoginPage = ({ onLogin }) => {
                           onChange={(e) => setPassword(e.target.value)}
                           placeholder="Enter your password"
                           required
-                          className="bg-slate-700/50 border-slate-600 text-white placeholder-gray-400 rounded-lg"
+                          className="bg-slate-700/50 dark:bg-[#112334] border-slate-600 dark:border-[rgba(255,255,255,0.1)] text-white dark:text-slate-200 placeholder-gray-400 dark:placeholder-slate-400 rounded-lg"
                         />
                       </div>
                       
@@ -613,7 +617,7 @@ const LoginPage = ({ onLogin }) => {
                           value={name}
                           onChange={(e) => setName(e.target.value)}
                           placeholder="Your name"
-                          className="bg-slate-700/50 border-slate-600 text-white placeholder-gray-400 rounded-lg"
+                          className="bg-slate-700/50 dark:bg-[#112334] border-slate-600 dark:border-[rgba(255,255,255,0.1)] text-white dark:text-slate-200 placeholder-gray-400 dark:placeholder-slate-400 rounded-lg"
                         />
                       </div>
 
@@ -658,7 +662,7 @@ const LoginPage = ({ onLogin }) => {
                           placeholder="At least 6 characters"
                           required
                           minLength={6}
-                          className="bg-slate-700/50 border-slate-600 text-white placeholder-gray-400 rounded-lg"
+                          className="bg-slate-700/50 dark:bg-[#112334] border-slate-600 dark:border-[rgba(255,255,255,0.1)] text-white dark:text-slate-200 placeholder-gray-400 dark:placeholder-slate-400 rounded-lg"
                           onKeyDown={(e) => {
                             if (e.key === 'Enter' && email && password && password.length >= 6) {
                               handleMoonaRegister(e);

@@ -7,6 +7,11 @@ module.exports = {
   ],
   theme: {
   	extend: {
+  		fontFamily: {
+  			sans: ['DM Sans', 'system-ui', 'sans-serif'],
+  			display: ['Outfit', 'system-ui', 'sans-serif'],
+  			mono: ['DM Mono', 'JetBrains Mono', 'monospace'],
+  		},
   		borderRadius: {
   			lg: 'var(--radius)',
   			md: 'calc(var(--radius) - 2px)',
@@ -17,7 +22,8 @@ module.exports = {
   			foreground: 'hsl(var(--foreground))',
   			card: {
   				DEFAULT: 'hsl(var(--card))',
-  				foreground: 'hsl(var(--card-foreground))'
+  				foreground: 'hsl(var(--card-foreground))',
+  				border: 'hsl(var(--card-border))'
   			},
   			popover: {
   				DEFAULT: 'hsl(var(--popover))',
@@ -25,7 +31,8 @@ module.exports = {
   			},
   			primary: {
   				DEFAULT: 'hsl(var(--primary))',
-  				foreground: 'hsl(var(--primary-foreground))'
+  				foreground: 'hsl(var(--primary-foreground))',
+  				glow: 'hsl(var(--primary-glow))'
   			},
   			secondary: {
   				DEFAULT: 'hsl(var(--secondary))',
@@ -37,7 +44,8 @@ module.exports = {
   			},
   			accent: {
   				DEFAULT: 'hsl(var(--accent))',
-  				foreground: 'hsl(var(--accent-foreground))'
+  				foreground: 'hsl(var(--accent-foreground))',
+  				glow: 'hsl(var(--accent-glow))'
   			},
   			destructive: {
   				DEFAULT: 'hsl(var(--destructive))',
@@ -53,6 +61,14 @@ module.exports = {
   				'4': 'hsl(var(--chart-4))',
   				'5': 'hsl(var(--chart-5))'
   			}
+  		},
+  		animation: {
+  			'fade-in-up': 'fade-in-up 0.6s cubic-bezier(0.16, 1, 0.3, 1)',
+  			'fade-in-scale': 'fade-in-scale 0.5s cubic-bezier(0.16, 1, 0.3, 1)',
+  			'slide-in-right': 'slide-in-right 0.5s cubic-bezier(0.16, 1, 0.3, 1)',
+  			'cosmic-glow': 'cosmic-glow 3s ease-in-out infinite',
+  			'float': 'float 6s ease-in-out infinite',
+  			'mesh': 'mesh-gradient 15s ease infinite',
   		},
   		keyframes: {
   			'accordion-down': {

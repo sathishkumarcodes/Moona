@@ -69,12 +69,26 @@ def parse_robinhood_csv(csv_content: str) -> List[dict]:
                     errors.append(f"Row {row_num}: Invalid numeric values for {symbol}")
                     continue
                 
-                # Determine asset type
-                asset_type = 'stock'
+                # Determine asset type using normalization utility
+                from asset_type_utils import normalize_asset_type
+                
+                asset_type = 'stock'  # Default
+                name_upper = name.upper() if name else ''
                 if symbol in ['BTC', 'ETH', 'SOL', 'ADA', 'DOT', 'MATIC', 'LINK', 'UNI']:
                     asset_type = 'crypto'
-                elif 'IRA' in name.upper() or 'ROTH' in name.upper():
+                elif 'ETF' in name_upper or symbol.endswith('ETF'):
+                    asset_type = 'etf'
+                elif 'IRA' in name_upper or 'ROTH' in name_upper:
                     asset_type = 'roth_ira'
+                elif '401K' in name_upper or '401(K)' in name_upper:
+                    asset_type = '401k'
+                elif '529' in name_upper:
+                    asset_type = '529'
+                elif 'BOND' in name_upper:
+                    asset_type = 'bond'
+                
+                # Normalize to ensure it's valid
+                asset_type = normalize_asset_type(asset_type)
                 
                 # Extract sector if available
                 sector = row.get('Sector', row.get('sector', '')).strip() or None
@@ -150,9 +164,16 @@ async def import_robinhood_csv(
         
         for holding_data in holdings_data:
             try:
-                # Get current price
-                asset_type = holding_data['type'] if holding_data['type'] != 'roth_ira' else 'stock'
-                price_data = await price_service.get_price(holding_data['symbol'], asset_type)
+                # Get current price (only for stock/crypto)
+                from asset_type_utils import normalize_asset_type
+                asset_type = normalize_asset_type(holding_data['type'])
+                
+                # Only fetch price for tradable assets
+                if asset_type in ['stock', 'crypto']:
+                    price_data = await price_service.get_price(holding_data['symbol'], asset_type)
+                else:
+                    # For non-tradable assets, use avg_cost as current_price
+                    price_data = {'price': holding_data['avg_cost']}
                 
                 if "error" in price_data:
                     # Use average cost as fallback if price fetch fails
@@ -208,7 +229,7 @@ async def import_robinhood_csv(
                         current_user.id,
                         holding_data['symbol'],
                         holding_data['name'],
-                        holding_data['type'],
+                        normalize_asset_type(holding_data['type']),  # Normalize asset type
                         holding_data['shares'],
                         holding_data['avg_cost'],
                         current_price,

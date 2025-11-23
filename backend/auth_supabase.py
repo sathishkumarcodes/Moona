@@ -439,7 +439,7 @@ async def logout(request: Request, response: Response):
 
 # Helper function to get current user (for dependency injection)
 async def get_current_user_dependency(request: Request) -> UserData:
-    """Dependency to get current authenticated user"""
+    """Dependency to get current authenticated user - REQUIRES valid session"""
     try:
         session_token = request.cookies.get("session_token")
         
@@ -448,13 +448,12 @@ async def get_current_user_dependency(request: Request) -> UserData:
             if auth_header and auth_header.startswith("Bearer "):
                 session_token = auth_header.split(" ")[1]
         
-        # For testing purposes, allow mock user when no session token
+        # REQUIRE valid session - no mock user fallback
         if not session_token:
-            return UserData(
-                id="mock_user_123",
-                email="demo@investtracker.com",
-                name="Demo User",
-                picture="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face"
+            logger.warning("get_current_user_dependency - No session token found")
+            raise HTTPException(
+                status_code=401,
+                detail="Authentication required. Please log in."
             )
         
         pool = await get_db_pool()
@@ -465,14 +464,13 @@ async def get_current_user_dependency(request: Request) -> UserData:
         )
         
         if not session:
-            # Return mock user for demonstration if session not found
-            return UserData(
-                id="mock_user_123",
-                email="demo@investtracker.com",
-                name="Demo User",
-                picture="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face"
+            logger.warning(f"get_current_user_dependency - Session not found or expired for token: {session_token[:8]}...")
+            raise HTTPException(
+                status_code=401,
+                detail="Session expired or invalid. Please log in again."
             )
         
+        logger.info(f"get_current_user_dependency - Authenticated user: {session['email']} (ID: {session['user_id']})")
         return UserData(
             id=str(session['user_id']),
             email=session['email'],
@@ -482,7 +480,11 @@ async def get_current_user_dependency(request: Request) -> UserData:
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error in auth dependency: {str(e)}")
+        logger.error(f"Error in auth dependency: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Authentication error. Please try logging in again."
+        )
         # Return mock user for demonstration in case of error
         return UserData(
             id="mock_user_123",

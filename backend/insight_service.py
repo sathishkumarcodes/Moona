@@ -96,27 +96,52 @@ def calculate_daily_attribution(
         DailyAttribution object with change analysis
     """
     try:
-        # Calculate current total value
-        current_total_value = sum(
-            float(h.get('total_value', h.get('quantity', 0) * h.get('price', 0)))
-            for h in current_holdings
-        )
+        if not current_holdings or len(current_holdings) == 0:
+            # Return empty attribution for no holdings
+            return DailyAttribution(
+                change_pct=0.0,
+                change_value=0.0,
+                top_gainers=[],
+                top_losers=[],
+                sector_breakdown=[],
+                concentration=ConcentrationMetrics(0.0, 0.0, 0.0)
+            )
+        
+        # Calculate current total value - handle different field names
+        current_total_value = 0.0
+        for h in current_holdings:
+            # Try multiple field name variations
+            total_val = h.get('total_value')
+            if total_val:
+                current_total_value += float(total_val)
+            else:
+                quantity = float(h.get('quantity', h.get('shares', 0)))
+                price = float(h.get('price', h.get('current_price', 0)))
+                current_total_value += quantity * price
         
         # If no previous data, use current holdings with previous price
         if previous_holdings is None:
             previous_holdings = current_holdings
-            previous_total_value = sum(
-                float(h.get('total_cost', 0)) or 
-                (float(h.get('quantity', 0)) * float(h.get('average_cost', h.get('price', 0))))
-                for h in current_holdings
-            )
+            previous_total_value = 0.0
+            for h in current_holdings:
+                total_cost = h.get('total_cost')
+                if total_cost:
+                    previous_total_value += float(total_cost)
+                else:
+                    quantity = float(h.get('quantity', h.get('shares', 0)))
+                    avg_cost = float(h.get('average_cost', h.get('avg_cost', h.get('price', 0))))
+                    previous_total_value += quantity * avg_cost
         
         if previous_total_value is None:
-            previous_total_value = sum(
-                float(h.get('total_cost', 0)) or 
-                (float(h.get('quantity', 0)) * float(h.get('average_cost', h.get('price', 0))))
-                for h in previous_holdings
-            )
+            previous_total_value = 0.0
+            for h in previous_holdings:
+                total_cost = h.get('total_cost')
+                if total_cost:
+                    previous_total_value += float(total_cost)
+                else:
+                    quantity = float(h.get('quantity', h.get('shares', 0)))
+                    avg_cost = float(h.get('average_cost', h.get('avg_cost', h.get('price', 0))))
+                    previous_total_value += quantity * avg_cost
         
         # Calculate total change
         change_value = current_total_value - previous_total_value
@@ -139,15 +164,17 @@ def calculate_daily_attribution(
         for holding in current_holdings:
             symbol = holding.get('symbol', '').upper()
             name = holding.get('name', symbol)
-            quantity = float(holding.get('quantity', 0))
-            current_price = float(holding.get('price', 0))
+            # Handle different field names for quantity
+            quantity = float(holding.get('quantity', holding.get('shares', 0)))
+            # Handle different field names for price
+            current_price = float(holding.get('price', holding.get('current_price', 0)))
             
             # Get previous price
             if symbol in prev_map:
                 prev_price = prev_map[symbol]['price']
             else:
                 # New holding, use average cost as previous
-                prev_price = float(holding.get('average_cost', current_price))
+                prev_price = float(holding.get('average_cost', holding.get('avg_cost', current_price)))
             
             # Calculate impact
             price_change = current_price - prev_price
@@ -175,16 +202,19 @@ def calculate_daily_attribution(
         
         for holding in current_holdings:
             sector = holding.get('sector', holding.get('type', 'Other'))
-            quantity = float(holding.get('quantity', 0))
-            current_price = float(holding.get('price', 0))
-            current_value = quantity * current_price
+            # Handle different field names
+            quantity = float(holding.get('quantity', holding.get('shares', 0)))
+            current_price = float(holding.get('price', holding.get('current_price', 0)))
+            # Try total_value first, then calculate
+            current_value = float(holding.get('total_value', quantity * current_price))
             
             symbol = holding.get('symbol', '').upper()
             if symbol in prev_map:
                 prev_price = prev_map[symbol]['price']
             else:
-                prev_price = float(holding.get('average_cost', current_price))
-            prev_value = quantity * prev_price
+                prev_price = float(holding.get('average_cost', holding.get('avg_cost', current_price)))
+            # Try total_cost first, then calculate
+            prev_value = float(holding.get('total_cost', quantity * prev_price))
             
             sector_data[sector]['value'] += current_value
             sector_data[sector]['prev_value'] += prev_value

@@ -2,15 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Lightbulb, TrendingUp, TrendingDown, AlertCircle, Loader2, RefreshCw, ChevronRight } from 'lucide-react';
+import DetailedInsightModal from './DetailedInsightModal';
 import axios from 'axios';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
 const API = `${BACKEND_URL}/api`;
 
-const DailyInsightCard = ({ date }) => {
+const DailyInsightCard = ({ date, onInsightLoaded }) => {
   const [insight, setInsight] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showDetailedModal, setShowDetailedModal] = useState(false);
 
   const fetchInsight = async () => {
     setIsLoading(true);
@@ -18,12 +20,17 @@ const DailyInsightCard = ({ date }) => {
     
     try {
       const params = date ? { date } : {};
-      const response = await axios.get(`${API}/api/insights/daily`, {
+      const response = await axios.get(`${API}/insights/daily`, {
         params,
         withCredentials: true,
-        timeout: 15000
+        timeout: 8000 // Reduced timeout
       });
-      setInsight(response.data);
+      const insightData = response.data;
+      setInsight(insightData);
+      // Notify parent component
+      if (onInsightLoaded) {
+        onInsightLoaded(insightData);
+      }
     } catch (err) {
       console.error('Error fetching daily insight:', err);
       setError(err.response?.data?.detail || 'Failed to load insight');
@@ -52,11 +59,14 @@ const DailyInsightCard = ({ date }) => {
 
   if (isLoading) {
     return (
-      <Card className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 border-blue-200 shadow-lg">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-center space-x-3">
-            <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
-            <span className="text-gray-600">Analyzing your portfolio...</span>
+      <Card className="bg-white/80 dark:bg-[#112334] backdrop-blur-sm border-0 dark:border-[rgba(255,255,255,0.05)] dark:shadow-[0_4px_12px_rgba(0,0,0,0.2)] shadow-md rounded-2xl">
+        <CardContent className="p-8">
+          <div className="space-y-3">
+            {/* Skeleton lines */}
+            <div className="h-6 bg-gray-200 dark:bg-slate-700 rounded w-3/4 animate-pulse"></div>
+            <div className="h-4 bg-gray-200 dark:bg-slate-700 rounded w-full animate-pulse"></div>
+            <div className="h-4 bg-gray-200 dark:bg-slate-700 rounded w-5/6 animate-pulse"></div>
+            <div className="h-4 bg-gray-200 dark:bg-slate-700 rounded w-2/3 animate-pulse"></div>
           </div>
         </CardContent>
       </Card>
@@ -65,21 +75,20 @@ const DailyInsightCard = ({ date }) => {
 
   if (error) {
     return (
-      <Card className="bg-gradient-to-br from-red-50 to-orange-50 border-red-200 shadow-lg">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <AlertCircle className="w-5 h-5 text-red-600" />
-              <span className="text-red-700">{error}</span>
-            </div>
+      <Card className="bg-white/80 dark:bg-[#112334] backdrop-blur-sm border-0 dark:border-[rgba(255,255,255,0.05)] dark:shadow-[0_4px_12px_rgba(0,0,0,0.2)] shadow-md rounded-2xl">
+        <CardContent className="p-8">
+          <div className="flex items-center justify-center">
+            <p className="text-sm text-gray-600 dark:text-slate-400">
+              We couldn't generate today's insight. Try refreshing.
+            </p>
             <Button
               onClick={fetchInsight}
               size="sm"
-              variant="outline"
-              className="border-red-300 text-red-700 hover:bg-red-50"
+              variant="ghost"
+              className="ml-3 text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200"
             >
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Retry
+              <RefreshCw className="w-4 h-4 mr-1" />
+              Refresh
             </Button>
           </div>
         </CardContent>
@@ -92,118 +101,67 @@ const DailyInsightCard = ({ date }) => {
   }
 
   const isPositive = insight.changePct >= 0;
-  const changeColor = isPositive ? 'text-emerald-600' : 'text-red-600';
-  const bgGradient = isPositive 
-    ? 'from-emerald-50 via-green-50 to-teal-50' 
-    : 'from-red-50 via-orange-50 to-amber-50';
-  const borderColor = isPositive ? 'border-emerald-200' : 'border-red-200';
+  const changeColor = isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400';
+  const changeBgColor = isPositive 
+    ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800' 
+    : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800';
+  const concentrationPct = insight.attribution?.concentration?.topHoldingPct?.toFixed(0) || 0;
 
   return (
-    <Card className={`bg-gradient-to-br ${bgGradient} ${borderColor} shadow-md hover:shadow-lg transition-all duration-300 card-hover rounded-xl`}>
-      <CardHeader className="pb-4">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <CardTitle className="flex items-center text-gray-900 mb-2">
-              <div className={`p-2 rounded-lg mr-3 ${isPositive ? 'bg-emerald-100' : 'bg-red-100'}`}>
-                <Lightbulb className={`w-5 h-5 ${isPositive ? 'text-emerald-600' : 'text-red-600'}`} />
-              </div>
-              <span className="text-xl font-bold">Daily Portfolio Insight</span>
-            </CardTitle>
+    <Card className="bg-white/80 dark:bg-gradient-to-br dark:from-[#12293F] dark:to-[#0F1E30] backdrop-blur-sm border-0 dark:border-[rgba(255,255,255,0.05)] dark:shadow-[0_4px_12px_rgba(0,0,0,0.2)] shadow-md rounded-2xl">
+      <CardContent className="p-8">
+        <div className="flex items-start justify-between gap-4">
+          {/* Left: Main Narrative */}
+          <div className="flex-1 space-y-3">
+            {/* Line 1: Bold headline */}
+            <p className="text-lg font-bold text-gray-900 dark:text-slate-200">
+              {insight.headline || `Your portfolio ${isPositive ? 'rose' : 'fell'} ${formatPercent(Math.abs(insight.changePct))} today.`}
+            </p>
+            
+            {/* Line 2: Narrative explanation */}
+            <p className="text-sm text-gray-700 dark:text-slate-300 leading-relaxed">
+              {insight.details}
+            </p>
+            
+            {/* Spacer line: Concentration */}
+            {insight.attribution?.concentration && (
+              <p className="text-xs text-gray-600 dark:text-slate-400 pt-2 border-t border-gray-200 dark:border-[rgba(255,255,255,0.04)]">
+                Concentration: {concentrationPct}%
+              </p>
+            )}
           </div>
-          <div className={`px-3 py-1.5 rounded-lg ${isPositive ? 'bg-emerald-100' : 'bg-red-100'} flex-shrink-0`}>
-            <span className={`text-sm font-bold ${changeColor}`}>
-              {formatPercent(insight.changePct)}
-            </span>
-            <span className={`text-xs ml-2 ${changeColor} opacity-75`}>
-              {formatCurrency(insight.changeValue)}
-            </span>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Lead Sentence */}
-        <div>
-          <p className="text-lg font-semibold text-gray-900 mb-3">
-            {insight.headline}
-          </p>
-          <p className="text-sm text-gray-700 leading-relaxed">
-            {insight.details}
-          </p>
-        </div>
 
-        {/* Key Drivers - Compact Format */}
-        {insight.keyDrivers && insight.keyDrivers.length > 0 && (
-          <div className="space-y-2 pt-3 border-t border-white/30">
-            <div className="flex flex-wrap gap-3">
-              {insight.keyDrivers.slice(0, 3).map((driver, idx) => {
-                const isPositiveDriver = driver.includes('+');
-                const parts = driver.split(':');
-                return (
-                  <div
-                    key={idx}
-                    className="flex items-center gap-2 bg-white/60 backdrop-blur-sm rounded-lg px-3 py-1.5 border border-white/40"
-                  >
-                    <span className="text-xs font-semibold text-gray-700">
-                      {parts[0]}
-                    </span>
-                    <span className={`text-xs font-bold ${
-                      isPositiveDriver ? 'text-emerald-600' : 'text-red-600'
-                    }`}>
-                      {parts[1]?.trim()}
-                    </span>
-                  </div>
-                );
-              })}
+          {/* Right: Badge with today's change - with glow effect */}
+          <div className={`px-4 py-3 rounded-lg border ${changeBgColor} flex-shrink-0 text-center min-w-[100px] dark:shadow-[0_0_12px_rgba(16,185,129,0.3)]`}>
+            <div className={`text-lg font-bold ${changeColor} mb-1`}>
+              {formatPercent(insight.changePct)}
+            </div>
+            <div className={`text-sm font-medium ${changeColor} opacity-90`}>
+              {formatCurrency(insight.changeValue)}
             </div>
           </div>
-        )}
+        </div>
 
-        {/* Attribution Summary - Compact */}
-        {insight.attribution && (
-          <div className="flex items-center gap-4 pt-3 border-t border-white/30 text-xs">
-            {insight.attribution.topGainers && insight.attribution.topGainers.length > 0 && (
-              <div>
-                <span className="text-gray-600">Top Gainer: </span>
-                <span className="font-semibold text-emerald-600">
-                  {insight.attribution.topGainers[0].symbol}
-                </span>
-              </div>
-            )}
-            {insight.attribution.topLosers && insight.attribution.topLosers.length > 0 && (
-              <div>
-                <span className="text-gray-600">Top Loser: </span>
-                <span className="font-semibold text-red-600">
-                  {insight.attribution.topLosers[0].symbol}
-                </span>
-              </div>
-            )}
-            {insight.attribution.concentration && (
-              <div>
-                <span className="text-gray-600">Concentration: </span>
-                <span className="font-semibold text-gray-700">
-                  {insight.attribution.concentration.topHoldingPct?.toFixed(0) || 0}%
-                </span>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Action Button */}
-        <div className="flex justify-end pt-2">
+        {/* Explain More Button */}
+        <div className="flex justify-end pt-4 mt-4 border-t border-gray-200 dark:border-[rgba(255,255,255,0.04)]">
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
-            className="bg-white/60 hover:bg-white/80 border-white/50 text-gray-700 rounded-lg"
-            onClick={() => {
-              // Future: Open detailed insights modal
-              console.log('Explain more clicked');
-            }}
+            className="text-gray-700 dark:text-slate-300 hover:text-gray-900 dark:hover:text-slate-100 hover:bg-gray-100 dark:hover:bg-opacity-80 dark:hover:-translate-y-0.5 transition-all duration-200"
+            onClick={() => setShowDetailedModal(true)}
           >
             <span>Explain More</span>
             <ChevronRight className="w-4 h-4 ml-2" />
           </Button>
         </div>
       </CardContent>
+
+      {/* Detailed Insight Modal */}
+      <DetailedInsightModal
+        open={showDetailedModal}
+        onClose={() => setShowDetailedModal(false)}
+        insight={insight}
+      />
     </Card>
   );
 };

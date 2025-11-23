@@ -306,8 +306,34 @@ class PriceService:
             change_24h = coin_data.get('usd_24h_change', 0)
             volume_24h = coin_data.get('usd_24h_vol', 0)
             
+            # Get crypto name - use CoinGecko name or fallback to company_data
+            crypto_name = None
+            try:
+                # Try to get full name from CoinGecko
+                coin_info = self.cg.get_coin_by_id(coin_id)
+                if coin_info and 'name' in coin_info:
+                    crypto_name = coin_info['name']
+            except Exception as e:
+                logger.debug(f"Could not get CoinGecko name for {symbol}: {str(e)}")
+            
+            # Fallback to mapped names if CoinGecko name not available
+            if not crypto_name:
+                crypto_name_map = {
+                    'BTC': 'Bitcoin',
+                    'ETH': 'Ethereum',
+                    'SOL': 'Solana',
+                    'ADA': 'Cardano',
+                    'DOT': 'Polkadot',
+                    'MATIC': 'Polygon',
+                    'LINK': 'Chainlink',
+                    'UNI': 'Uniswap'
+                }
+                crypto_name = crypto_name_map.get(symbol.upper(), get_company_name(symbol))
+            
             result = {
                 "symbol": symbol.upper(),
+                "name": crypto_name,  # Full crypto name
+                "sector": "Cryptocurrency",
                 "price": current_price,
                 "change_24h": change_24h,
                 "change_percent": change_24h,  # CoinGecko returns percentage directly

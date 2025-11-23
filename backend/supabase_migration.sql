@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS holdings (
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     symbol VARCHAR(10) NOT NULL,
     name VARCHAR(200) NOT NULL,
-    type VARCHAR(20) NOT NULL CHECK (type IN ('stock', 'crypto', 'roth_ira')),
+    type VARCHAR(20) NOT NULL CHECK (type IN ('stock', 'crypto', 'roth_ira', 'cash', 'hysa', 'bank', 'home_equity', 'other', 'etf', 'bond', '401k', '529', 'child_roth', 'hsa', 'traditional_ira', 'sep_ira')),
     shares DECIMAL(15, 6) NOT NULL CHECK (shares > 0),
     avg_cost DECIMAL(15, 2) NOT NULL CHECK (avg_cost > 0),
     current_price DECIMAL(15, 2) NOT NULL,

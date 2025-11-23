@@ -278,7 +278,7 @@ async def connect_binance(
                         current_user.id,
                         symbol,
                         name,
-                        "crypto",
+                        "crypto",  # Binance only imports crypto
                         balance,
                         avg_cost,
                         price,

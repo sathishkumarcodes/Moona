@@ -18,7 +18,26 @@ const InvestmentList = ({ investments, onEdit, onDelete, isLoading }) => {
   const [filterPlatform, setFilterPlatform] = useState('all');
   const [sortBy, setSortBy] = useState('value');
   const [deletingId, setDeletingId] = useState(null);
+  const [minReturnFilter, setMinReturnFilter] = useState(null);
+  const [showDebug, setShowDebug] = useState(true); // Show debug panel by default
   const { toast } = useToast();
+
+  // Listen for filter events from QuickInsights
+  useEffect(() => {
+    const handleFilterHoldings = (event) => {
+      const filter = event.detail;
+      if (filter.minReturn !== undefined) {
+        setMinReturnFilter(filter.minReturn);
+        // Clear other filters when applying return filter
+        setFilterType('all');
+        setFilterPlatform('all');
+        setSearchTerm('');
+      }
+    };
+
+    window.addEventListener('filterHoldings', handleFilterHoldings);
+    return () => window.removeEventListener('filterHoldings', handleFilterHoldings);
+  }, []);
 
   // Safety check for investments
   const safeInvestments = investments || [];
@@ -47,6 +66,37 @@ const InvestmentList = ({ investments, onEdit, onDelete, isLoading }) => {
   const formatPercent = (percent) => {
     const sign = percent >= 0 ? '+' : '';
     return `${sign}${percent.toFixed(2)}%`;
+  };
+
+  const formatAssetTypeName = (type) => {
+    const names = {
+      'stock': 'Stocks',
+      'stocks': 'Stocks',
+      'crypto': 'Crypto',
+      'cryptocurrency': 'Crypto',
+      'cash': 'Cash',
+      'hysa': 'HYSA',
+      'bank': 'Bank Account',
+      'home_equity': 'Home Equity',
+      'home equity': 'Home Equity',
+      'roth_ira': 'Roth IRA',
+      'roth ira': 'Roth IRA',
+      'etf': 'ETF',
+      'bond': 'Bonds',
+      '401k': '401(k)',
+      '529': '529 Plan',
+      'child_roth': "Child's Roth IRA",
+      'childs_roth': "Child's Roth IRA",
+      'hsa': 'HSA',
+      'traditional_ira': 'Traditional IRA',
+      'sep_ira': 'SEP IRA',
+      'other': 'Other'
+    };
+    const normalized = type?.toLowerCase().replace(/\s+/g, '_');
+    return names[normalized] || type
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
   };
 
   const getChangeColor = (value) => {
@@ -87,12 +137,34 @@ const InvestmentList = ({ investments, onEdit, onDelete, isLoading }) => {
 
   const filteredInvestments = safeInvestments
     .filter(investment => {
-      if (!investment) return false;
+      if (!investment) {
+        console.warn('⚠️ InvestmentList - Filtered out null/undefined investment');
+        return false;
+      }
       const matchesSearch = (investment.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                            (investment.symbol || '').toLowerCase().includes(searchTerm.toLowerCase());
       const matchesType = filterType === 'all' || investment.type === filterType;
       const matchesPlatform = filterPlatform === 'all' || investment.platform === filterPlatform;
-      return matchesSearch && matchesType && matchesPlatform;
+      const matchesMinReturn = minReturnFilter === null || 
+        (investment.return_percent || investment.gain_loss_percent || 0) >= minReturnFilter;
+      
+      const passes = matchesSearch && matchesType && matchesPlatform && matchesMinReturn;
+      
+      if (!passes) {
+        console.log('🔍 InvestmentList - Filtered out:', {
+          symbol: investment.symbol,
+          name: investment.name,
+          matchesSearch,
+          matchesType,
+          matchesPlatform,
+          matchesMinReturn,
+          filterType,
+          filterPlatform,
+          minReturnFilter
+        });
+      }
+      
+      return passes;
     })
     .sort((a, b) => {
       switch (sortBy) {
@@ -116,10 +188,71 @@ const InvestmentList = ({ investments, onEdit, onDelete, isLoading }) => {
   }, [filteredInvestments.length, searchTerm, filterType, filterPlatform]);
 
   return (
-    <Card>
+    <Card className="bg-white/80 dark:bg-[#112334] backdrop-blur-sm border-0 dark:border-[rgba(255,255,255,0.05)] dark:shadow-[0_4px_12px_rgba(0,0,0,0.2)] shadow-sm rounded-2xl">
+      {/* Debug Panel - Visible in UI */}
+      {showDebug && (
+        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 m-4 mb-0">
+          <div className="flex items-center justify-between mb-2">
+            <h4 className="text-sm font-semibold text-yellow-800 dark:text-yellow-200">🔍 Debug Info</h4>
+            <button
+              onClick={() => setShowDebug(false)}
+              className="text-yellow-600 dark:text-yellow-400 hover:text-yellow-800 dark:hover:text-yellow-200"
+            >
+              ×
+            </button>
+          </div>
+          <div className="text-xs text-yellow-700 dark:text-yellow-300 space-y-1">
+            <div><strong>Total Holdings from API:</strong> {safeInvestments.length}</div>
+            <div><strong>After Filtering:</strong> {filteredInvestments.length}</div>
+            <div><strong>Active Filters:</strong></div>
+            <div className="ml-4">
+              - Search: "{searchTerm || '(none)'}"<br/>
+              - Type: {filterType}<br/>
+              - Platform: {filterPlatform}<br/>
+              - Min Return: {minReturnFilter !== null ? `${minReturnFilter}%` : '(none)'}
+            </div>
+            {safeInvestments.length > 0 && (
+              <div className="mt-2">
+                <strong>First Holding:</strong> {safeInvestments[0]?.symbol || 'N/A'} ({safeInvestments[0]?.type || 'N/A'})
+              </div>
+            )}
+            {safeInvestments.length === 0 && (
+              <div className="text-red-600 dark:text-red-400 mt-2">
+                ⚠️ <strong>No holdings received from API!</strong>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+      {!showDebug && (
+        <div className="p-2 text-center">
+          <button
+            onClick={() => setShowDebug(true)}
+            className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+          >
+            Show Debug Info
+          </button>
+        </div>
+      )}
       <CardHeader>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
-          <CardTitle>Investment Holdings</CardTitle>
+          <div className="flex items-center gap-3">
+            <CardTitle className="text-gray-900 dark:text-slate-200">Investment Holdings</CardTitle>
+            {minReturnFilter !== null && (
+              <Badge 
+                variant="outline" 
+                className="bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300"
+              >
+                Return &gt; {minReturnFilter}%
+                <button
+                  onClick={() => setMinReturnFilter(null)}
+                  className="ml-2 hover:text-emerald-900 dark:hover:text-emerald-100"
+                >
+                  ×
+                </button>
+              </Badge>
+            )}
+          </div>
           <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -139,7 +272,20 @@ const InvestmentList = ({ investments, onEdit, onDelete, isLoading }) => {
                 <SelectItem value="all">All Types</SelectItem>
                 <SelectItem value="stock">Stocks</SelectItem>
                 <SelectItem value="crypto">Crypto</SelectItem>
+                <SelectItem value="cash">Cash</SelectItem>
+                <SelectItem value="hysa">HYSA</SelectItem>
+                <SelectItem value="bank">Bank Account</SelectItem>
+                <SelectItem value="home_equity">Home Equity</SelectItem>
                 <SelectItem value="roth_ira">Roth IRA</SelectItem>
+                <SelectItem value="etf">ETF</SelectItem>
+                <SelectItem value="bond">Bond</SelectItem>
+                <SelectItem value="401k">401(k)</SelectItem>
+                <SelectItem value="529">529 Plan</SelectItem>
+                <SelectItem value="child_roth">Child's Roth IRA</SelectItem>
+                <SelectItem value="hsa">HSA</SelectItem>
+                <SelectItem value="traditional_ira">Traditional IRA</SelectItem>
+                <SelectItem value="sep_ira">SEP IRA</SelectItem>
+                <SelectItem value="other">Other</SelectItem>
               </SelectContent>
             </Select>
             <Select value={filterPlatform} onValueChange={setFilterPlatform}>
@@ -205,7 +351,7 @@ const InvestmentList = ({ investments, onEdit, onDelete, isLoading }) => {
                       <div className="flex items-center space-x-2 flex-wrap">
                         <h3 className="font-semibold text-gray-900 text-sm">{investment.symbol || 'N/A'}</h3>
                         <Badge variant="outline" className="text-xs px-1.5 py-0">
-                          {(investment.type || 'stock').toUpperCase().replace('_', ' ')}
+                          {formatAssetTypeName(investment.type || 'stock')}
                         </Badge>
                       </div>
                       <p className="text-xs text-gray-600 truncate">{investment.name || investment.symbol || 'Unknown'}</p>
@@ -228,7 +374,7 @@ const InvestmentList = ({ investments, onEdit, onDelete, isLoading }) => {
                   <div className="grid grid-cols-2 lg:grid-cols-7 gap-3 lg:gap-4 mt-2 lg:mt-0">
                     <div>
                       <p className="text-xs text-gray-500 mb-0.5">Asset Type</p>
-                      <p className="font-medium text-sm capitalize">{investment.type?.replace('_', ' ') || 'N/A'}</p>
+                      <p className="font-medium text-sm">{formatAssetTypeName(investment.type) || 'N/A'}</p>
                     </div>
                     <div>
                       <p className="text-xs text-gray-500 mb-0.5">Platform</p>

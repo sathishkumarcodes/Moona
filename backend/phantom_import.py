@@ -136,7 +136,7 @@ async def connect_phantom(
                         current_user.id,
                         symbol,
                         name,
-                        "crypto",
+                        "crypto",  # Phantom only imports crypto
                         balance,
                         avg_cost,
                         price,

@@ -19,15 +19,15 @@ const TopPerformersCard = ({ topPerformers }) => {
 
   if (!topPerformers || topPerformers.length === 0) {
     return (
-      <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-sm rounded-xl">
+      <Card className="bg-white/80 dark:bg-[#112334] backdrop-blur-sm border-0 dark:border-[rgba(255,255,255,0.05)] dark:shadow-[0_4px_12px_rgba(0,0,0,0.2)] shadow-sm rounded-2xl">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold text-gray-800 flex items-center">
-            <BarChart3 className="w-4 h-4 mr-2 text-gray-600" />
+          <CardTitle className="text-base font-semibold text-gray-800 dark:text-slate-200 flex items-center">
+            <BarChart3 className="w-4 h-4 mr-2 text-gray-600 dark:text-slate-400" />
             Top Performers
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="h-48 flex items-center justify-center text-gray-500 text-sm">
+        <CardContent className="p-8">
+          <div className="h-48 flex items-center justify-center text-gray-500 dark:text-slate-400 text-sm">
             No performance data yet
           </div>
         </CardContent>
@@ -36,17 +36,17 @@ const TopPerformersCard = ({ topPerformers }) => {
   }
 
   return (
-    <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-sm rounded-xl">
+    <Card className="bg-white/80 dark:bg-[#112334] backdrop-blur-sm border-0 dark:border-[rgba(255,255,255,0.05)] dark:shadow-[0_4px_12px_rgba(0,0,0,0.2)] shadow-sm rounded-2xl">
       <CardHeader className="pb-3">
-        <CardTitle className="text-base font-semibold text-gray-800 flex items-center">
-          <BarChart3 className="w-4 h-4 mr-2 text-gray-600" />
+        <CardTitle className="text-base font-semibold text-gray-800 dark:text-slate-200 flex items-center">
+          <BarChart3 className="w-4 h-4 mr-2 text-gray-600 dark:text-slate-400" />
           Top Performers
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-8">
         <div className="space-y-1">
           {/* Header */}
-          <div className="grid grid-cols-4 gap-2 text-xs font-semibold text-gray-600 border-b border-gray-200 pb-2">
+          <div className="grid grid-cols-4 gap-2 text-xs font-semibold text-gray-600 dark:text-slate-400 border-b border-gray-200 dark:border-[rgba(255,255,255,0.04)] pb-2">
             <div>Symbol</div>
             <div>Name</div>
             <div className="text-right">Return %</div>
@@ -62,12 +62,12 @@ const TopPerformersCard = ({ topPerformers }) => {
             return (
               <div
                 key={idx}
-                className="grid grid-cols-4 gap-2 py-2 border-b border-gray-100 last:border-0 text-sm hover:bg-gray-50 rounded transition-colors"
+                className="grid grid-cols-4 gap-2 py-2 border-b border-gray-100 dark:border-[rgba(255,255,255,0.04)] last:border-0 text-sm hover:bg-gray-50 dark:hover:bg-opacity-80 dark:hover:-translate-y-0.5 rounded transition-all duration-200"
               >
-                <div className="font-semibold text-gray-900">{performer.symbol}</div>
-                <div className="text-gray-700 truncate">{performer.name || performer.symbol}</div>
+                <div className="font-semibold text-gray-900 dark:text-slate-200">{performer.symbol}</div>
+                <div className="text-gray-700 dark:text-slate-300 truncate">{performer.name || performer.symbol}</div>
                 <div className={`text-right font-medium flex items-center justify-end gap-1 ${
-                  isPositive ? 'text-emerald-600' : 'text-red-600'
+                  isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
                 }`}>
                   {isPositive ? (
                     <TrendingUp className="w-3 h-3" />
@@ -76,7 +76,7 @@ const TopPerformersCard = ({ topPerformers }) => {
                   )}
                   {formatPercent(returnPct)}
                 </div>
-                <div className="text-right text-gray-700 font-medium">{formatCurrency(value)}</div>
+                <div className="text-right text-gray-700 dark:text-slate-300 font-medium">{formatCurrency(value)}</div>
               </div>
             );
           })}
